@@ -41,6 +41,27 @@ Event-driven backtest engine with DSL strategy execution, slippage/commission si
 - Repository pattern for persistence abstraction
 - OpenAPI-first REST APIs
 
+## Testing
+
+```bash
+# Unit tests only (no Docker required)
+make test-unit
+
+# Full suite — integration tests skip if Postgres is unavailable
+make test
+
+# Integration tests with Docker Postgres + Redis
+make test-integration
+
+# Integration tests when Postgres/Redis already running locally
+make test-integration-local
+
+# Mock-mode smoke test (no Docker, no API keys)
+cd backend && python -m scripts.mock_smoke_test
+```
+
+Integration tests cover auth, market data ingestion, strategy CRUD, and full backtest execution against Postgres. CI runs them automatically with service containers.
+
 ## License
 
 Proprietary — All rights reserved.

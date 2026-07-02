@@ -1,9 +1,9 @@
 from uuid import uuid4
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 
-from alphaedge.main import app
+pytestmark = pytest.mark.integration
 
 VALID_DSL = """
 name: sma_crossover
@@ -18,26 +18,8 @@ signals:
 """
 
 
-@pytest.fixture
-async def auth_client():
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        email = f"st_{uuid4().hex[:8]}@alphaedge.io"
-        await client.post(
-            "/api/v1/auth/register",
-            json={"email": email, "password": "securepass123", "display_name": "Strategy Tester"},
-        )
-        login = await client.post(
-            "/api/v1/auth/login",
-            json={"email": email, "password": "securepass123"},
-        )
-        token = login.json()["data"]["access_token"]
-        client.headers["Authorization"] = f"Bearer {token}"
-        yield client
-
-
 @pytest.mark.asyncio
-async def test_strategy_endpoints(auth_client, require_migrated_db):
+async def test_strategy_endpoints(auth_client: AsyncClient, require_migrated_db):
     name = f"strategy_{uuid4().hex[:8]}"
 
     create = await auth_client.post(
