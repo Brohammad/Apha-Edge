@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import DateTime, func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
@@ -37,7 +37,7 @@ class HoldingModel(Base, UUIDPrimaryKeyMixin):
     avg_cost: Mapped[Decimal] = mapped_column(nullable=False)
     current_price: Mapped[Decimal] = mapped_column(nullable=False)
     market_value: Mapped[Decimal] = mapped_column(nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class RebalancePlanModel(Base, UUIDPrimaryKeyMixin):
@@ -47,7 +47,7 @@ class RebalancePlanModel(Base, UUIDPrimaryKeyMixin):
     target_allocation: Mapped[dict] = mapped_column(JSONB, nullable=False)
     proposed_trades: Mapped[list] = mapped_column(JSONB, nullable=False)
     status: Mapped[str] = mapped_column(default=RebalanceStatus.DRAFT.value)
-    created_at: Mapped[datetime] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 def _portfolio_to_entity(m: PortfolioModel) -> Portfolio:

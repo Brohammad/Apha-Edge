@@ -19,7 +19,7 @@ async def test_portfolio_crud_and_risk_flow(auth_client: AsyncClient, require_mi
     )
     assert create.status_code == 201
     portfolio_id = create.json()["data"]["id"]
-    assert create.json()["data"]["cash_balance"] == "100000"
+    assert float(create.json()["data"]["cash_balance"]) == 100000
 
     listing = await auth_client.get("/api/v1/portfolios")
     assert listing.status_code == 200
@@ -35,7 +35,7 @@ async def test_portfolio_crud_and_risk_flow(auth_client: AsyncClient, require_mi
 
     perf = await auth_client.get(f"/api/v1/portfolios/{portfolio_id}/performance")
     assert perf.status_code == 200
-    assert perf.json()["data"]["total_value"] == "100000"
+    assert float(perf.json()["data"]["total_value"]) == 100000
 
     rebalance = await auth_client.post(
         f"/api/v1/portfolios/{portfolio_id}/rebalance",

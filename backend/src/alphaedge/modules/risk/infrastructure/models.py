@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import DateTime, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
@@ -17,7 +17,9 @@ class RiskSnapshotModel(Base, UUIDPrimaryKeyMixin):
     __tablename__ = "risk_snapshots"
 
     portfolio_id: Mapped[UUID] = mapped_column(nullable=False, index=True)
-    snapshot_at: Mapped[datetime] = mapped_column(nullable=False, index=True)
+    snapshot_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
     var_95: Mapped[Decimal | None] = mapped_column(nullable=True)
     var_99: Mapped[Decimal | None] = mapped_column(nullable=True)
     max_drawdown: Mapped[Decimal | None] = mapped_column(nullable=True)
