@@ -36,8 +36,6 @@ async def _reset_redis_between_tests() -> AsyncGenerator[None, None]:
     if redis_module._redis_client is not None:
         await redis_module.close_redis()
 
-REQUIRED_TABLES = ("users", "instruments", "strategies", "strategy_versions", "backtest_runs")
-
 
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
