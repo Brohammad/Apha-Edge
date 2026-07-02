@@ -26,5 +26,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
     log_level: str = "INFO"
 
+    alpha_vantage_api_key: str = ""
+
 
 settings = Settings()
