@@ -1,0 +1,10 @@
+{
+  "name": "alphaedge-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AlphaEdge web application (Phase 9 implementation pending)",
+  "scripts": {
+    "dev": "echo 'Frontend implementation planned for Phase 9'",
+    "build": "echo 'Frontend implementation planned for Phase 9'"
+  }
+}
