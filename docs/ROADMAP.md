@@ -59,20 +59,20 @@ Development proceeds in **phases**, each delivering a vertical slice of function
 
 ---
 
-## Phase 2 — Market Data
+## Phase 2 — Market Data ✅
 
-**Goal:** Ingest, store, and serve historical OHLCV data.
+**Status:** Complete
 
 **Deliverables:**
-- [ ] Instrument registry (CRUD)
-- [ ] Provider adapter interface + mock provider
-- [ ] Polygon/Alpha Vantage adapter (one real provider)
-- [ ] Ingestion pipeline (validation, normalization, storage)
-- [ ] Partitioned `bars` table
-- [ ] Bar query API with pagination and date range filters
-- [ ] Celery ingestion tasks
-- [ ] Seed script with sample data
-- [ ] Redis caching for latest bars
+- [x] Instrument registry (CRUD)
+- [x] Provider adapter interface + mock provider
+- [x] Alpha Vantage adapter (optional API key)
+- [x] Ingestion pipeline (validation, normalization, storage)
+- [x] Indexed `bars` table with composite primary key
+- [x] Bar query API with pagination and date range filters
+- [x] Celery ingestion tasks
+- [x] Seed script with sample data
+- [x] Redis caching for latest bars
 
 **Database tables:** `instruments`, `bars`, `corporate_actions`, `data_ingestion_jobs`
 
@@ -298,7 +298,8 @@ flowchart TD
 |-------|--------|
 | Phase 0 — Architecture | ✅ Complete |
 | Phase 1 — Foundation & Identity | ✅ Complete |
-| Phase 2 — Market Data | ⏳ Awaiting approval |
+| Phase 2 — Market Data | ✅ Complete |
+| Phase 3 — Strategy Engine | ⏳ Awaiting approval |
 | Phase 3–11 | 🔒 Not started |
 
 **Action required:** Review Phase 1 implementation and approve Phase 2 to begin market data ingestion.

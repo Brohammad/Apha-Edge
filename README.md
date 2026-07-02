@@ -6,11 +6,11 @@ AlphaEdge is not a trading dashboard. It is a production-grade platform for trad
 
 ## Status
 
-**Phase 1 — Foundation & Identity** ✅ Complete
+**Phase 2 — Market Data** ✅ Complete
 
-Runnable FastAPI backend with Docker Compose, JWT authentication, RBAC, health checks, and CI pipeline.
+Runnable market data module with instrument registry, mock/Alpha Vantage providers, OHLCV ingestion, bar query API, and Redis caching.
 
-**Next:** Phase 2 — Market Data (awaiting approval)
+**Next:** Phase 3 — Strategy Engine (awaiting approval)
 
 ## Documentation
 
