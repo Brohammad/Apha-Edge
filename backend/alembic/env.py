@@ -29,6 +29,15 @@ from alphaedge.modules.backtesting.infrastructure.models import (  # noqa: F401
     BacktestRunModel,
     BacktestTradeModel,
 )
+from alphaedge.modules.portfolio.infrastructure.models import (  # noqa: F401
+    HoldingModel,
+    PortfolioModel,
+    RebalancePlanModel,
+)
+from alphaedge.modules.risk.infrastructure.models import (  # noqa: F401
+    RiskLimitModel,
+    RiskSnapshotModel,
+)
 from alphaedge.shared.infrastructure.outbox import (  # noqa: F401
     AuditLogModel,
     OutboxEventModel,

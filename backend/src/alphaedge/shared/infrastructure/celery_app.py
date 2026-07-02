@@ -19,5 +19,6 @@ celery_app.conf.update(
     include=[
         "alphaedge.modules.market_data.infrastructure.tasks",
         "alphaedge.modules.backtesting.infrastructure.tasks",
+        "alphaedge.modules.risk.infrastructure.tasks",
     ],
 )
