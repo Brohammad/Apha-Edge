@@ -34,9 +34,7 @@ def require_migrated_db() -> None:
             conn.cursor() as cur,
         ):
             for table in REQUIRED_TABLES:
-                cur.execute(
-                    sql.SQL("SELECT 1 FROM {} LIMIT 1").format(sql.Identifier(table))
-                )
+                cur.execute(sql.SQL("SELECT 1 FROM {} LIMIT 1").format(sql.Identifier(table)))
     except Exception as exc:
         pytest.skip(f"Database unavailable or migrations not applied: {exc}")
 
