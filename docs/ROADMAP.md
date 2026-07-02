@@ -213,22 +213,26 @@ Development proceeds in **phases**, each delivering a vertical slice of function
 
 ---
 
-## Phase 8 — AI Insights Layer
+## Phase 8 — AI Insights Layer ✅
+
+**Status:** Complete
 
 **Goal:** LLM-powered analysis and reporting.
 
 **Deliverables:**
-- [ ] Prompt template system (versioned)
-- [ ] Strategy explanation generator
-- [ ] Performance report generator
-- [ ] Risk interpretation generator
-- [ ] Trade summary generator
-- [ ] Async Celery task pipeline
-- [ ] Insights API
+- [x] Prompt template system (versioned)
+- [x] Strategy explanation generator
+- [x] Performance report generator
+- [x] Risk interpretation generator
+- [x] Trade summary generator
+- [x] Async Celery task pipeline
+- [x] Insights API
 
 **Database tables:** `insight_requests`, `insight_reports`
 
 **API endpoints:** `/insights/*`
+
+**Tests:** Prompt/LLM unit tests, insight integration tests.
 
 ---
 
@@ -317,6 +321,7 @@ flowchart TD
 | Phase 5 — Portfolio & Risk | ✅ Complete |
 | Phase 6 — Optimization | ✅ Complete |
 | Phase 7 — Execution | ✅ Complete |
-| Phase 8–11 | 🔒 Not started |
+| Phase 8 — AI Insights | ✅ Complete |
+| Phase 9–11 | 🔒 Not started |
 
-**Action required:** Review Phase 7 implementation and approve Phase 8 to begin AI insights layer.
+**Action required:** Review Phase 8 implementation and approve Phase 9 to begin frontend dashboard.

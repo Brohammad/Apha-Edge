@@ -22,6 +22,7 @@ REQUIRED_TABLES = (
     "optimization_runs",
     "broker_connections",
     "orders",
+    "insight_requests",
     "portfolios",
 )
 

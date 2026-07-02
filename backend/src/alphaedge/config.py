@@ -43,5 +43,8 @@ class Settings(BaseSettings):
     # Python path, "require" fails if the extension is missing.
     cpp_engine: Literal["auto", "off", "require"] = "auto"
 
+    openai_api_key: str = ""
+    llm_provider: Literal["mock", "openai"] = "mock"
+
 
 settings = Settings()

@@ -21,6 +21,7 @@ celery_app.conf.update(
         "alphaedge.modules.backtesting.infrastructure.tasks",
         "alphaedge.modules.optimization.infrastructure.tasks",
         "alphaedge.modules.execution.infrastructure.tasks",
+        "alphaedge.modules.insights.infrastructure.tasks",
         "alphaedge.modules.risk.infrastructure.tasks",
     ],
 )
