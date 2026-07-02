@@ -1,7 +1,13 @@
-.PHONY: dev dev-down test test-unit test-integration lint migrate seed install
+.PHONY: dev dev-down test test-unit test-integration lint migrate seed install build-cpp benchmark
 
 install:
 	cd backend && pip install -e ".[dev]"
+
+build-cpp:
+	cd backend && pip install ./cpp
+
+benchmark: build-cpp
+	cd backend && python scripts/benchmark_backtest.py
 
 dev:
 	docker compose -f infrastructure/docker-compose.yml up --build

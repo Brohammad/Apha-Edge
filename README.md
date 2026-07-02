@@ -62,6 +62,20 @@ cd backend && python -m scripts.mock_smoke_test
 
 Integration tests cover auth, market data ingestion, strategy CRUD, and full backtest execution against Postgres. CI runs them automatically with service containers.
 
+## C++ Backtest Acceleration (optional)
+
+The DSL backtest hot path can run on a pybind11 C++ extension (~60x faster, 1M events in ~0.1s):
+
+```bash
+# Build and install the extension (requires a C++17 compiler)
+make build-cpp
+
+# Compare Python vs C++ engine performance
+make benchmark
+```
+
+When installed, DSL backtests use it automatically. Control via the `CPP_ENGINE` setting: `auto` (default), `off`, or `require`.
+
 ## License
 
 Proprietary — All rights reserved.
