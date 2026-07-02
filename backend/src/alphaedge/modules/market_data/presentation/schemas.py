@@ -38,7 +38,7 @@ class BarResponse(BaseModel):
 
 
 class TriggerIngestionRequest(BaseModel):
-    provider: str = Field(default="mock", pattern="^(mock|alpha_vantage)$")
+    provider: str = Field(default="mock", pattern="^(mock|alpha_vantage|polygon)$")
     symbols: list[str] = Field(min_length=1)
     timeframe: Timeframe = Timeframe.D1
     start_date: datetime

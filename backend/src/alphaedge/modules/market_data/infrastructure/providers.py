@@ -118,10 +118,96 @@ class AlphaVantageProvider(MarketDataProvider):
         return bars
 
 
+class PolygonProvider(MarketDataProvider):
+    BASE_URL = "https://api.polygon.io"
+
+    @property
+    def name(self) -> str:
+        return "polygon"
+
+    async def fetch_bars(
+        self,
+        symbol: str,
+        timeframe: Timeframe,
+        start: datetime,
+        end: datetime,
+    ) -> list[RawBar]:
+        if not settings.polygon_api_key:
+            raise ValidationError("POLYGON_API_KEY is not configured")
+
+        multiplier, timespan = self._timeframe_params(timeframe)
+        from_bound = self._format_bound(start, timeframe)
+        to_bound = self._format_bound(end, timeframe)
+        url = (
+            f"{self.BASE_URL}/v2/aggs/ticker/{symbol.upper()}/range/"
+            f"{multiplier}/{timespan}/{from_bound}/{to_bound}"
+        )
+
+        bars: list[RawBar] = []
+        params: dict[str, str | int] | None = {
+            "apiKey": settings.polygon_api_key,
+            "adjusted": "true",
+            "sort": "asc",
+            "limit": 50000,
+        }
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            while url:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                payload = response.json()
+
+                if payload.get("status") not in (None, "OK", "DELAYED"):
+                    raise ValidationError(
+                        payload.get("error", payload.get("message", "Polygon API error"))
+                    )
+
+                for item in payload.get("results", []):
+                    ts = datetime.fromtimestamp(item["t"] / 1000, tz=UTC)
+                    if ts < start or ts > end:
+                        continue
+                    bars.append(
+                        RawBar(
+                            symbol=symbol,
+                            timestamp=ts,
+                            open=Decimal(str(item["o"])),
+                            high=Decimal(str(item["h"])),
+                            low=Decimal(str(item["l"])),
+                            close=Decimal(str(item["c"])),
+                            volume=Decimal(str(item["v"])),
+                            vwap=Decimal(str(item["vw"])) if item.get("vw") is not None else None,
+                        )
+                    )
+
+                url = payload.get("next_url")
+                params = {"apiKey": settings.polygon_api_key} if url else None
+
+        bars.sort(key=lambda b: b.timestamp)
+        return bars
+
+    @staticmethod
+    def _timeframe_params(timeframe: Timeframe) -> tuple[int, str]:
+        mapping = {
+            Timeframe.M1: (1, "minute"),
+            Timeframe.M5: (5, "minute"),
+            Timeframe.M15: (15, "minute"),
+            Timeframe.H1: (1, "hour"),
+            Timeframe.D1: (1, "day"),
+        }
+        return mapping[timeframe]
+
+    @staticmethod
+    def _format_bound(dt: datetime, timeframe: Timeframe) -> str:
+        if timeframe == Timeframe.D1:
+            return dt.strftime("%Y-%m-%d")
+        return str(int(dt.timestamp() * 1000))
+
+
 def get_provider(name: str) -> MarketDataProvider:
     providers: dict[str, MarketDataProvider] = {
         "mock": MockMarketDataProvider(),
         "alpha_vantage": AlphaVantageProvider(),
+        "polygon": PolygonProvider(),
     }
     provider = providers.get(name)
     if not provider:
