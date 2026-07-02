@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -37,6 +38,10 @@ class Settings(BaseSettings):
 
     alpha_vantage_api_key: str = ""
     polygon_api_key: str = ""
+
+    # C++ backtest engine: "auto" uses it when installed, "off" forces the
+    # Python path, "require" fails if the extension is missing.
+    cpp_engine: Literal["auto", "off", "require"] = "auto"
 
 
 settings = Settings()

@@ -36,9 +36,11 @@ htmlcov/
 .ruff_cache/
 
 # C++
-cpp/build/
+backend/cpp/build/
+backend/cpp/*.egg-info/
 *.so
 *.dylib
+*.o
 
 # Secrets
 .env.local

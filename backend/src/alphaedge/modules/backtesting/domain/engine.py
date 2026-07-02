@@ -59,7 +59,12 @@ class DSLExecutorAdapter(StrategyExecutor):
 
 
 class BacktestEngine:
-    """Event-driven backtest engine processing bars in chronological order."""
+    """Event-driven backtest engine processing bars in chronological order.
+
+    DSL strategies run on the C++ extension (``alphaedge_cpp``) when it is
+    installed and ``settings.cpp_engine`` allows it; otherwise the pure-Python
+    path below is used.
+    """
 
     def __init__(self, run_id: UUID, config: BacktestConfig) -> None:
         self._run_id = run_id
@@ -73,6 +78,14 @@ class BacktestEngine:
         strategy_name: str,
         parameters: dict[str, object],
     ) -> BacktestOutput:
+        if strategy_type == StrategyType.DSL and self._should_use_cpp():
+            from alphaedge.modules.backtesting.domain.cpp_bridge import run_cpp_backtest
+
+            compiled, _ = StrategyCompiler.validate_and_compile(
+                StrategyType.DSL, source_code, strategy_name, parameters
+            )
+            return run_cpp_backtest(self._run_id, self._config, bars_by_instrument, compiled)
+
         executor = self._build_executor(strategy_type, source_code, strategy_name, parameters)
         events = self._merge_events(bars_by_instrument)
         portfolio = _Portfolio(cash=self._config.initial_capital)
@@ -101,6 +114,23 @@ class BacktestEngine:
         for trade in closed:
             trade.backtest_run_id = self._run_id
         return BacktestOutput(result=result, trades=closed)
+
+    @staticmethod
+    def _should_use_cpp() -> bool:
+        from alphaedge.config import settings
+        from alphaedge.modules.backtesting.domain.cpp_bridge import cpp_available
+
+        mode = settings.cpp_engine
+        if mode == "off":
+            return False
+        if mode == "require":
+            if not cpp_available():
+                raise RuntimeError(
+                    "cpp_engine is set to 'require' but alphaedge_cpp is not installed; "
+                    "build it with `make build-cpp`"
+                )
+            return True
+        return cpp_available()
 
     def _build_executor(
         self,
