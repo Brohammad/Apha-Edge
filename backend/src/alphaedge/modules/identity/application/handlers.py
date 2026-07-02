@@ -104,8 +104,7 @@ class RefreshTokenHandler:
             id=uuid4(),
             user_id=user.id,
             token_hash=TokenService.hash_token(raw_refresh),
-            expires_at=datetime.now(UTC)
-            + timedelta(days=settings.jwt_refresh_token_expire_days),
+            expires_at=datetime.now(UTC) + timedelta(days=settings.jwt_refresh_token_expire_days),
         )
         await self._token_repo.save(new_refresh)
 

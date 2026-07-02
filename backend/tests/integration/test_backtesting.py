@@ -140,9 +140,7 @@ async def _create_instrument(auth_client: AsyncClient) -> str:
     return instrument.json()["data"]["id"]
 
 
-async def _submit_backtest(
-    auth_client: AsyncClient, version_id: str, instrument_id: str
-) -> str:
+async def _submit_backtest(auth_client: AsyncClient, version_id: str, instrument_id: str) -> str:
     end = datetime.now(UTC)
     start = end - timedelta(days=30)
     submit = await auth_client.post(

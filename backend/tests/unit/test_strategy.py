@@ -27,13 +27,13 @@ signals:
     then: SELL
 """
 
-VALID_PYTHON = '''
+VALID_PYTHON = """
 from alphaedge.modules.strategy.domain import StrategyBase, Signal, SignalAction
 
 class MyStrategy(StrategyBase):
     def on_bar(self, bar, context):
         return Signal(action=SignalAction.HOLD)
-'''
+"""
 
 
 class TestDSLParser:
@@ -98,9 +98,7 @@ class TestStrategyCompiler:
 
     def test_python_missing_base_class(self):
         with pytest.raises(ValidationError, match="StrategyBase"):
-            StrategyCompiler.validate_and_compile(
-                StrategyType.PYTHON, "class Foo: pass", "foo"
-            )
+            StrategyCompiler.validate_and_compile(StrategyType.PYTHON, "class Foo: pass", "foo")
 
     def test_python_disallowed_import(self):
         with pytest.raises(ValidationError, match="Disallowed import"):

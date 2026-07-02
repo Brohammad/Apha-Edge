@@ -32,9 +32,7 @@ class InstrumentIndicatorState:
     prev_values: dict[str, Decimal | None] = field(default_factory=dict)
     current_values: dict[str, Decimal | None] = field(default_factory=dict)
 
-    def get_indicator(
-        self, ref: str, parameters: dict[str, object]
-    ) -> tuple[Indicator, str]:
+    def get_indicator(self, ref: str, parameters: dict[str, object]) -> tuple[Indicator, str]:
         match = INDICATOR_CALL.match(ref.strip())
         if not match:
             raise ValueError(f"Invalid indicator ref: {ref}")

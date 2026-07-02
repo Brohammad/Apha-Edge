@@ -235,9 +235,7 @@ async def get_strategy_version(
     strategy_repo, version_repo, _ = _repos(session)
     handler = GetStrategyVersionHandler(strategy_repo, version_repo)
     result = await handler.handle(
-        GetStrategyVersionQuery(
-            user_id=user_id, strategy_id=strategy_id, version_id=version_id
-        )
+        GetStrategyVersionQuery(user_id=user_id, strategy_id=strategy_id, version_id=version_id)
     )
     return success_response(_to_version(result), request_id=_request_id(request))
 

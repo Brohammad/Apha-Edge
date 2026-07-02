@@ -178,11 +178,16 @@ class StrategyCompiler:
                 for alias in node.names:
                     if alias.name.startswith(("os", "sys", "subprocess", "socket")):
                         raise ValidationError(f"Disallowed import: {alias.name}")
-            if isinstance(node, ast.ImportFrom) and node.module and node.module.split(".")[0] in (
-                "os",
-                "sys",
-                "subprocess",
-                "socket",
+            if (
+                isinstance(node, ast.ImportFrom)
+                and node.module
+                and node.module.split(".")[0]
+                in (
+                    "os",
+                    "sys",
+                    "subprocess",
+                    "socket",
+                )
             ):
                 raise ValidationError(f"Disallowed import: {node.module}")
 

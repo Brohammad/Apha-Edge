@@ -227,9 +227,7 @@ class ListIndicatorsHandler:
         return [IndicatorDTO.from_entity(i) for i in items]
 
 
-async def _get_owned_strategy(
-    strategy_repo: StrategyRepository, user_id, strategy_id
-) -> Strategy:
+async def _get_owned_strategy(strategy_repo: StrategyRepository, user_id, strategy_id) -> Strategy:
     strategy = await strategy_repo.get_by_id(strategy_id)
     if not strategy or strategy.deleted_at is not None:
         raise NotFoundError("Strategy", str(strategy_id))

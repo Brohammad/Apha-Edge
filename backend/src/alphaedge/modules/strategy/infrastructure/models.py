@@ -149,9 +149,13 @@ class SQLAlchemyStrategyRepository(StrategyRepository):
         return [_strategy_to_entity(m) for m in result.scalars().all()]
 
     async def count_by_user(self, user_id: UUID, *, active_only: bool = True) -> int:
-        stmt = select(func.count()).select_from(StrategyModel).where(
-            StrategyModel.user_id == user_id,
-            StrategyModel.deleted_at.is_(None),
+        stmt = (
+            select(func.count())
+            .select_from(StrategyModel)
+            .where(
+                StrategyModel.user_id == user_id,
+                StrategyModel.deleted_at.is_(None),
+            )
         )
         if active_only:
             stmt = stmt.where(StrategyModel.is_active.is_(True))

@@ -50,8 +50,7 @@ class MetricsCalculator:
         win_rate, profit_factor = MetricsCalculator._trade_stats(trades)
 
         curve_json = [
-            {"timestamp": p.timestamp.isoformat(), "equity": str(p.equity)}
-            for p in equity_curve
+            {"timestamp": p.timestamp.isoformat(), "equity": str(p.equity)} for p in equity_curve
         ]
         metrics_blob = {
             "initial_capital": str(initial_capital),

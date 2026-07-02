@@ -141,9 +141,7 @@ class DeleteBacktestRunHandler:
             await self._run_repo.update(run)
 
 
-async def _get_owned_run(
-    run_repo: BacktestRunRepository, user_id, run_id
-) -> BacktestRun:
+async def _get_owned_run(run_repo: BacktestRunRepository, user_id, run_id) -> BacktestRun:
     run = await run_repo.get_by_id(run_id)
     if not run:
         raise NotFoundError("BacktestRun", str(run_id))

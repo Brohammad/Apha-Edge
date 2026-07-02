@@ -34,9 +34,7 @@ class _Portfolio:
         return self.positions.get(instrument_id, Decimal("0"))
 
     def mark_equity(self, timestamp: datetime, prices: dict[UUID, Decimal]) -> None:
-        holdings = sum(
-            qty * prices.get(iid, Decimal("0")) for iid, qty in self.positions.items()
-        )
+        holdings = sum(qty * prices.get(iid, Decimal("0")) for iid, qty in self.positions.items())
         self.equity_curve.append(EquityPoint(timestamp=timestamp, equity=self.cash + holdings))
 
     @property
@@ -128,9 +126,7 @@ class BacktestEngine:
         events.sort(key=lambda b: b.timestamp)
         return events
 
-    def _execute_signal(
-        self, portfolio: _Portfolio, bar: Bar, signal: SignalAction
-    ) -> None:
+    def _execute_signal(self, portfolio: _Portfolio, bar: Bar, signal: SignalAction) -> None:
         iid = bar.instrument_id
         price = bar.close
         equity = portfolio.equity if portfolio.equity_curve else portfolio.cash

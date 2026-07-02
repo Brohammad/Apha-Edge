@@ -105,8 +105,21 @@ class TestBacktestEngine:
         iid = uuid4()
         config = _make_config(instrument_ids=[str(iid)])
         prices = [
-            "10", "11", "12", "13", "14", "15", "14", "13",
-            "12", "11", "10", "9", "10", "11", "12",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "14",
+            "13",
+            "12",
+            "11",
+            "10",
+            "9",
+            "10",
+            "11",
+            "12",
         ]
         bars = _make_bars(iid, prices)
         engine = BacktestEngine(uuid4(), config)

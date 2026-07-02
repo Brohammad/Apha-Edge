@@ -122,9 +122,7 @@ class GetLatestBarHandler:
 
         bar = await self._bar_repo.get_latest(query.instrument_id, query.timeframe)
         if not bar:
-            raise NotFoundError(
-                "Bar", f"{query.instrument_id}/{query.timeframe.value}"
-            )
+            raise NotFoundError("Bar", f"{query.instrument_id}/{query.timeframe.value}")
 
         if self._cache:
             await self._cache.set(query.instrument_id, query.timeframe, bar)

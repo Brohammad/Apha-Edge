@@ -158,8 +158,10 @@ class SQLAlchemyBacktestRunRepository(BacktestRunRepository):
         return [_run_to_entity(m) for m in result.scalars().all()]
 
     async def count_by_user(self, user_id: UUID) -> int:
-        stmt = select(func.count()).select_from(BacktestRunModel).where(
-            BacktestRunModel.user_id == user_id
+        stmt = (
+            select(func.count())
+            .select_from(BacktestRunModel)
+            .where(BacktestRunModel.user_id == user_id)
         )
         result = await self._session.execute(stmt)
         return int(result.scalar_one())
