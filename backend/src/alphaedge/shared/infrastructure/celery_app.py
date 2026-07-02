@@ -16,5 +16,8 @@ celery_app.conf.update(
     enable_utc=True,
     task_track_started=True,
     task_acks_late=True,
-    include=["alphaedge.modules.market_data.infrastructure.tasks"],
+    include=[
+        "alphaedge.modules.market_data.infrastructure.tasks",
+        "alphaedge.modules.backtesting.infrastructure.tasks",
+    ],
 )

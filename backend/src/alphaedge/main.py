@@ -12,6 +12,7 @@ from sqlalchemy import text
 from starlette.responses import Response
 
 from alphaedge.config import settings
+from alphaedge.modules.backtesting.presentation.router import backtest_router
 from alphaedge.modules.identity.presentation.router import router as auth_router
 from alphaedge.modules.market_data.presentation.router import (
     instruments_router,
@@ -136,6 +137,7 @@ def register_routes(app: FastAPI) -> None:
     api_v1.include_router(market_data_router)
     api_v1.include_router(strategies_router)
     api_v1.include_router(indicators_router)
+    api_v1.include_router(backtest_router)
 
     @api_v1.get("/health/live", tags=["Health"])
     async def liveness():

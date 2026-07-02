@@ -24,6 +24,11 @@ from alphaedge.modules.strategy.infrastructure.models import (  # noqa: F401
     StrategyModel,
     StrategyVersionModel,
 )
+from alphaedge.modules.backtesting.infrastructure.models import (  # noqa: F401
+    BacktestResultModel,
+    BacktestRunModel,
+    BacktestTradeModel,
+)
 from alphaedge.shared.infrastructure.outbox import (  # noqa: F401
     AuditLogModel,
     OutboxEventModel,
