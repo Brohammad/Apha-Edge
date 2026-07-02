@@ -102,29 +102,27 @@ Development proceeds in **phases**, each delivering a vertical slice of function
 
 ---
 
-## Phase 4 — Backtesting Engine
+## Phase 4 — Backtesting Engine ✅
 
-**Goal:** Event-driven backtesting with realistic simulation.
+**Status:** Complete
 
 **Deliverables:**
-- [ ] Event-driven backtest engine (Python)
-- [ ] Slippage models (fixed, percentage)
-- [ ] Commission/brokerage simulation
-- [ ] Position sizing (fixed quantity, percent equity)
-- [ ] Partial fill simulation
-- [ ] Multi-asset support
-- [ ] Backtest job submission via Celery
-- [ ] Results storage (metrics, trades, equity curve)
-- [ ] Backtest API (submit, status, results, trades, equity curve)
-- [ ] CLI backtest runner
+- [x] Event-driven backtest engine (Python)
+- [x] Slippage models (fixed, percentage)
+- [x] Commission/brokerage simulation
+- [x] Position sizing (fixed quantity, percent equity)
+- [x] Partial fill simulation
+- [x] Multi-asset support
+- [x] Backtest job submission via Celery
+- [x] Results storage (metrics, trades, equity curve)
+- [x] Backtest API (submit, status, results, trades, equity curve)
+- [x] CLI backtest runner
 
 **Database tables:** `backtest_runs`, `backtest_results`, `backtest_trades`
 
 **API endpoints:** `/backtest-runs/*`
 
 **Tests:** Fill simulation tests, backtest engine integration tests, metric calculation tests.
-
-**Performance target:** 1M events in < 30 seconds (Python); C++ module deferred to Phase 4b.
 
 ---
 
@@ -300,7 +298,8 @@ flowchart TD
 | Phase 1 — Foundation & Identity | ✅ Complete |
 | Phase 2 — Market Data | ✅ Complete |
 | Phase 3 — Strategy Engine | ✅ Complete |
-| Phase 4 — Backtesting | ⏳ Awaiting approval |
-| Phase 4–11 | 🔒 Not started |
+| Phase 4 — Backtesting | ✅ Complete |
+| Phase 4b — C++ Layer | ⏳ Awaiting approval |
+| Phase 5–11 | 🔒 Not started |
 
-**Action required:** Review Phase 3 implementation and approve Phase 4 to begin backtesting.
+**Action required:** Review Phase 4 implementation and approve Phase 5 to begin portfolio & risk.

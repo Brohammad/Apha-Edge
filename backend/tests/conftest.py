@@ -18,7 +18,7 @@ def require_migrated_db():
         engine = create_async_engine(settings.database_url)
         try:
             async with engine.connect() as conn:
-                await conn.execute(text("SELECT 1 FROM indicators LIMIT 1"))
+                await conn.execute(text("SELECT 1 FROM backtest_runs LIMIT 1"))
         finally:
             await engine.dispose()
 
