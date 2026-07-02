@@ -13,6 +13,10 @@ from starlette.responses import Response
 
 from alphaedge.config import settings
 from alphaedge.modules.backtesting.presentation.router import backtest_router
+from alphaedge.modules.execution.presentation.router import (
+    broker_connections_router,
+    orders_router,
+)
 from alphaedge.modules.identity.presentation.router import router as auth_router
 from alphaedge.modules.market_data.presentation.router import (
     instruments_router,
@@ -142,6 +146,8 @@ def register_routes(app: FastAPI) -> None:
     api_v1.include_router(indicators_router)
     api_v1.include_router(backtest_router)
     api_v1.include_router(optimization_router)
+    api_v1.include_router(broker_connections_router)
+    api_v1.include_router(orders_router)
     api_v1.include_router(portfolios_router)
     api_v1.include_router(risk_router)
 
