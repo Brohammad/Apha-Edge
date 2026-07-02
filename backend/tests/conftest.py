@@ -28,17 +28,6 @@ def _patch_app_lifespan_for_tests() -> None:
     app.router.lifespan_context = _test_lifespan  # type: ignore[assignment]
 
 
-@pytest.fixture(scope="session", autouse=True)
-async def _shared_async_resources() -> AsyncGenerator[None, None]:
-    """Keep DB engine and Redis valid for the session-scoped event loop."""
-    yield
-    from alphaedge.shared.infrastructure import redis as redis_module
-    from alphaedge.shared.infrastructure.database import engine
-
-    await redis_module.close_redis()
-    await engine.dispose()
-
-
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers",
