@@ -61,5 +61,8 @@ jobs:
           cd backend && ruff check src tests
           cd backend && ruff format --check src tests
 
+      - name: Run migrations
+        run: cd backend && alembic upgrade head
+
       - name: Run tests
         run: cd backend && pytest -v --cov=alphaedge --cov-report=term-missing
