@@ -1,0 +1,65 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: alphaedge
+          POSTGRES_PASSWORD: alphaedge
+          POSTGRES_DB: alphaedge
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://alphaedge:alphaedge@localhost:5432/alphaedge
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET_KEY: test-secret-key
+      APP_SECRET_KEY: test-app-secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -e "./backend[dev]"
+
+      - name: Lint
+        run: |
+          cd backend && ruff check src tests
+          cd backend && ruff format --check src tests
+
+      - name: Run tests
+        run: cd backend && pytest -v --cov=alphaedge --cov-report=term-missing
