@@ -33,21 +33,21 @@ Development proceeds in **phases**, each delivering a vertical slice of function
 
 ---
 
-## Phase 1 — Foundation & Identity
+## Phase 1 — Foundation & Identity ✅
 
-**Goal:** Runnable development environment with authentication.
+**Status:** Complete
 
 **Deliverables:**
-- [ ] Monorepo scaffolding (backend, frontend skeleton, docker)
-- [ ] Docker Compose dev stack (Postgres, Redis, API, worker)
-- [ ] FastAPI app factory with middleware (CORS, auth, logging, error handling)
-- [ ] Shared kernel (value objects, event bus, unit of work, outbox)
-- [ ] Alembic setup with initial migration
-- [ ] Identity module (register, login, JWT, refresh tokens, RBAC)
-- [ ] Health check endpoints
-- [ ] Structured logging + Prometheus metrics
-- [ ] GitHub Actions CI (lint, type check, unit tests)
-- [ ] Makefile with dev commands
+- [x] Monorepo scaffolding (backend, frontend skeleton, docker)
+- [x] Docker Compose dev stack (Postgres, Redis, API, worker)
+- [x] FastAPI app factory with middleware (CORS, auth, logging, error handling)
+- [x] Shared kernel (value objects, event bus, unit of work, outbox)
+- [x] Alembic setup with initial migration
+- [x] Identity module (register, login, JWT, refresh tokens, RBAC)
+- [x] Health check endpoints
+- [x] Structured logging + Prometheus metrics
+- [x] GitHub Actions CI (lint, type check, unit tests)
+- [x] Makefile with dev commands
 
 **Database tables:** `users`, `roles`, `user_roles`, `refresh_tokens`, `api_keys`, `audit_log`, `outbox_events`
 
@@ -297,7 +297,8 @@ flowchart TD
 | Phase | Status |
 |-------|--------|
 | Phase 0 — Architecture | ✅ Complete |
-| Phase 1 — Foundation | ⏳ Awaiting approval |
-| Phase 2–11 | 🔒 Not started |
+| Phase 1 — Foundation & Identity | ✅ Complete |
+| Phase 2 — Market Data | ⏳ Awaiting approval |
+| Phase 3–11 | 🔒 Not started |
 
-**Action required:** Review architecture documents and approve Phase 1 to begin implementation.
+**Action required:** Review Phase 1 implementation and approve Phase 2 to begin market data ingestion.
