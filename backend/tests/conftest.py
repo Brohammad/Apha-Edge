@@ -1,11 +1,12 @@
-import asyncio
+import socket
 from collections.abc import AsyncGenerator
+from urllib.parse import urlparse
 from uuid import uuid4
 
+import psycopg
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
+from psycopg import sql
 
 from alphaedge.config import settings
 from alphaedge.main import app
@@ -20,28 +21,22 @@ def pytest_configure(config: pytest.Config) -> None:
     )
 
 
-async def _check_postgres() -> None:
-    engine = create_async_engine(settings.database_url)
-    try:
-        async with engine.connect() as conn:
-            for table in REQUIRED_TABLES:
-                await conn.execute(text(f"SELECT 1 FROM {table} LIMIT 1"))
-    finally:
-        await engine.dispose()
-
-
-async def _check_redis() -> None:
-    from alphaedge.shared.infrastructure.redis import check_redis_health
-
-    if not await check_redis_health():
-        raise ConnectionError("Redis ping failed")
+def _postgres_dsn() -> str:
+    return settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
 
 
 @pytest.fixture(scope="session")
 def require_migrated_db() -> None:
     """Skip integration tests when Postgres is down or migrations are missing."""
     try:
-        asyncio.run(_check_postgres())
+        with (
+            psycopg.connect(_postgres_dsn(), connect_timeout=3) as conn,
+            conn.cursor() as cur,
+        ):
+            for table in REQUIRED_TABLES:
+                cur.execute(
+                    sql.SQL("SELECT 1 FROM {} LIMIT 1").format(sql.Identifier(table))
+                )
     except Exception as exc:
         pytest.skip(f"Database unavailable or migrations not applied: {exc}")
 
@@ -49,9 +44,13 @@ def require_migrated_db() -> None:
 @pytest.fixture(scope="session")
 def require_redis() -> None:
     """Skip when Redis is unavailable (health/ready tests)."""
+    parsed = urlparse(settings.redis_url)
+    host = parsed.hostname or "localhost"
+    port = parsed.port or 6379
     try:
-        asyncio.run(_check_redis())
-    except Exception as exc:
+        with socket.create_connection((host, port), timeout=3):
+            pass
+    except OSError as exc:
         pytest.skip(f"Redis unavailable: {exc}")
 
 
