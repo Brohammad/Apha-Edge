@@ -145,18 +145,20 @@ Development proceeds in **phases**, each delivering a vertical slice of function
 
 ---
 
-## Phase 5 — Portfolio & Risk
+## Phase 5 — Portfolio & Risk ✅
+
+**Status:** Complete
 
 **Goal:** Portfolio tracking and institutional-grade risk analytics.
 
 **Deliverables:**
-- [ ] Portfolio CRUD and holdings tracking
-- [ ] Holdings updated on backtest/execution events
-- [ ] Risk metric calculations (VaR, Sharpe, Sortino, drawdown, beta, alpha)
-- [ ] Risk snapshot generation (on-demand + scheduled)
-- [ ] Risk limit enforcement
-- [ ] Rebalancing plan generation
-- [ ] Portfolio and risk APIs
+- [x] Portfolio CRUD and holdings tracking
+- [x] Holdings updated on backtest/execution events (`POST /portfolios/{id}/sync-from-backtest`)
+- [x] Risk metric calculations (VaR, Sharpe, Sortino, drawdown, beta, alpha)
+- [x] Risk snapshot generation (on-demand + Celery task)
+- [x] Risk limit enforcement
+- [x] Rebalancing plan generation
+- [x] Portfolio and risk APIs
 
 **Database tables:** `portfolios`, `holdings`, `rebalance_plans`, `risk_snapshots`, `risk_limits`
 
@@ -304,6 +306,7 @@ flowchart TD
 | Phase 3 — Strategy Engine | ✅ Complete |
 | Phase 4 — Backtesting | ✅ Complete |
 | Phase 4b — C++ Layer | ✅ Complete |
-| Phase 5–11 | 🔒 Not started |
+| Phase 5 — Portfolio & Risk | ✅ Complete |
+| Phase 6–11 | 🔒 Not started |
 
-**Action required:** Review Phase 4b implementation and approve Phase 5 to begin portfolio & risk.
+**Action required:** Review Phase 5 implementation and approve Phase 6 to begin optimization engine.

@@ -34,5 +34,6 @@ async def test_openapi_docs_available(client: AsyncClient):
         "/api/v1/strategies",
         "/api/v1/backtest-runs",
         "/api/v1/indicators",
+        "/api/v1/portfolios",
     ):
         assert path in paths, f"Missing route: {path}"

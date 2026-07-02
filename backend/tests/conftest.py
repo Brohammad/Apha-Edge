@@ -13,7 +13,14 @@ from alphaedge.config import settings
 from alphaedge.main import app
 from alphaedge.shared.infrastructure.logging import setup_logging
 
-REQUIRED_TABLES = ("users", "instruments", "strategies", "strategy_versions", "backtest_runs")
+REQUIRED_TABLES = (
+    "users",
+    "instruments",
+    "strategies",
+    "strategy_versions",
+    "backtest_runs",
+    "portfolios",
+)
 
 
 @asynccontextmanager
