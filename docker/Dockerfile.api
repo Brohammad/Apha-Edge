@@ -7,11 +7,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/pyproject.toml ./
+COPY backend/src ./src
 RUN pip install --no-cache-dir -e ".[dev]"
 
-COPY backend/src ./src
 COPY backend/alembic ./alembic
 COPY backend/alembic.ini ./
+
+ENV PYTHONPATH=/app/src
 
 EXPOSE 8000
 

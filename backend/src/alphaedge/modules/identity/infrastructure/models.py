@@ -48,8 +48,8 @@ class RefreshTokenModel(Base, UUIDPrimaryKeyMixin):
         PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
     )
     token_hash: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    expires_at: Mapped[datetime] = mapped_column(nullable=False)
-    revoked_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 def _role_to_entity(model: RoleModel) -> Role:

@@ -34,6 +34,7 @@ services:
     env_file:
       - ../.env
     environment:
+      PYTHONPATH: /app/src
       DATABASE_URL: postgresql+asyncpg://alphaedge:alphaedge@postgres:5432/alphaedge
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
@@ -54,6 +55,7 @@ services:
     env_file:
       - ../.env
     environment:
+      PYTHONPATH: /app/src
       DATABASE_URL: postgresql+asyncpg://alphaedge:alphaedge@postgres:5432/alphaedge
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
