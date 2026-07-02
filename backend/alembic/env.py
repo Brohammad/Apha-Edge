@@ -19,6 +19,11 @@ from alphaedge.modules.market_data.infrastructure.models import (  # noqa: F401
     IngestionJobModel,
     InstrumentModel,
 )
+from alphaedge.modules.strategy.infrastructure.models import (  # noqa: F401
+    IndicatorModel,
+    StrategyModel,
+    StrategyVersionModel,
+)
 from alphaedge.shared.infrastructure.outbox import (  # noqa: F401
     AuditLogModel,
     OutboxEventModel,

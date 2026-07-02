@@ -17,6 +17,10 @@ from alphaedge.modules.market_data.presentation.router import (
     instruments_router,
     market_data_router,
 )
+from alphaedge.modules.strategy.presentation.router import (
+    indicators_router,
+    strategies_router,
+)
 from alphaedge.shared.domain.exceptions import DomainException
 from alphaedge.shared.infrastructure.database import engine
 from alphaedge.shared.infrastructure.logging import setup_logging
@@ -130,6 +134,8 @@ def register_routes(app: FastAPI) -> None:
     api_v1.include_router(auth_router)
     api_v1.include_router(instruments_router)
     api_v1.include_router(market_data_router)
+    api_v1.include_router(strategies_router)
+    api_v1.include_router(indicators_router)
 
     @api_v1.get("/health/live", tags=["Health"])
     async def liveness():
