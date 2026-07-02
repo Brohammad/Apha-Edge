@@ -82,17 +82,17 @@ Development proceeds in **phases**, each delivering a vertical slice of function
 
 ---
 
-## Phase 3 — Strategy Engine
+## Phase 3 — Strategy Engine ✅
 
-**Goal:** Create, version, and validate trading strategies.
+**Status:** Complete
 
 **Deliverables:**
-- [ ] Strategy CRUD with versioning
-- [ ] Python strategy base class (`StrategyBase`)
-- [ ] DSL parser and validator (YAML-based)
-- [ ] Indicator library (SMA, EMA, RSI, MACD, Bollinger Bands)
-- [ ] Strategy compilation and validation pipeline
-- [ ] Indicator catalog API
+- [x] Strategy CRUD with versioning
+- [x] Python strategy base class (`StrategyBase`)
+- [x] DSL parser and validator (YAML-based)
+- [x] Indicator library (SMA, EMA, RSI, MACD, Bollinger Bands)
+- [x] Strategy compilation and validation pipeline
+- [x] Indicator catalog API
 
 **Database tables:** `strategies`, `strategy_versions`, `indicators`
 
@@ -299,7 +299,8 @@ flowchart TD
 | Phase 0 — Architecture | ✅ Complete |
 | Phase 1 — Foundation & Identity | ✅ Complete |
 | Phase 2 — Market Data | ✅ Complete |
-| Phase 3 — Strategy Engine | ⏳ Awaiting approval |
-| Phase 3–11 | 🔒 Not started |
+| Phase 3 — Strategy Engine | ✅ Complete |
+| Phase 4 — Backtesting | ⏳ Awaiting approval |
+| Phase 4–11 | 🔒 Not started |
 
-**Action required:** Review Phase 1 implementation and approve Phase 2 to begin market data ingestion.
+**Action required:** Review Phase 3 implementation and approve Phase 4 to begin backtesting.

@@ -6,11 +6,11 @@ AlphaEdge is not a trading dashboard. It is a production-grade platform for trad
 
 ## Status
 
-**Phase 2 — Market Data** ✅ Complete
+**Phase 3 — Strategy Engine** ✅ Complete
 
-Runnable market data module with instrument registry, mock/Alpha Vantage providers, OHLCV ingestion, bar query API, and Redis caching.
+Strategy CRUD with versioning, YAML DSL parser, Python `StrategyBase`, indicator library (SMA, EMA, RSI, MACD, Bollinger Bands), validation pipeline, and indicator catalog API.
 
-**Next:** Phase 3 — Strategy Engine (awaiting approval)
+**Next:** Phase 4 — Backtesting Engine (awaiting approval)
 
 ## Documentation
 
