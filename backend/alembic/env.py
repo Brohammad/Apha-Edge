@@ -14,6 +14,11 @@ from alphaedge.modules.identity.infrastructure.models import (  # noqa: F401
     RoleModel,
     UserModel,
 )
+from alphaedge.modules.market_data.infrastructure.models import (  # noqa: F401
+    BarModel,
+    IngestionJobModel,
+    InstrumentModel,
+)
 from alphaedge.shared.infrastructure.outbox import (  # noqa: F401
     AuditLogModel,
     OutboxEventModel,
