@@ -1,11 +1,11 @@
 from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from httpx import AsyncClient
 
-from alphaedge.modules.market_data.infrastructure.ingestion import run_ingestion_sync
+from alphaedge.modules.market_data.infrastructure.ingestion import execute_ingestion
 
 pytestmark = pytest.mark.integration
 
@@ -86,7 +86,7 @@ async def test_ingestion_persists_bars(auth_client: AsyncClient, require_migrate
         },
     )
     job_id = ingest.json()["data"]["id"]
-    run_ingestion_sync(job_id)
+    await execute_ingestion(UUID(job_id))
 
     bars = await auth_client.get(
         f"/api/v1/instruments/{instrument_id}/bars",
