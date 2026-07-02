@@ -85,7 +85,7 @@ class GetStrategyHandler:
         self._strategy_repo = strategy_repo
 
     async def handle(self, query: GetStrategyQuery) -> StrategyDTO:
-        strategy = await self._get_owned_strategy(query.user_id, query.strategy_id)
+        strategy = await _get_owned_strategy(self._strategy_repo, query.user_id, query.strategy_id)
         return StrategyDTO.from_entity(strategy)
 
 

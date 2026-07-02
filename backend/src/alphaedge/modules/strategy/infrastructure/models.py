@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import DateTime, func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +29,7 @@ class StrategyModel(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     description: Mapped[str | None] = mapped_column(nullable=True)
     strategy_type: Mapped[str] = mapped_column(nullable=False)
     is_active: Mapped[bool] = mapped_column(default=True)
-    deleted_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class StrategyVersionModel(Base):
@@ -42,7 +42,11 @@ class StrategyVersionModel(Base):
     parameters: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
     compiled_hash: Mapped[str | None] = mapped_column(nullable=True)
     status: Mapped[str] = mapped_column(default=VersionStatus.DRAFT.value)
-    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
 
 
 class IndicatorModel(Base, UUIDPrimaryKeyMixin):

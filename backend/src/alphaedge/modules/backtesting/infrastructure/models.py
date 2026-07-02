@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import DateTime, func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,8 +30,8 @@ class BacktestRunModel(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     name: Mapped[str] = mapped_column(nullable=False)
     status: Mapped[str] = mapped_column(default=BacktestStatus.QUEUED.value, index=True)
     config: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
-    started_at: Mapped[datetime | None] = mapped_column(nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error_message: Mapped[str | None] = mapped_column(nullable=True)
     celery_task_id: Mapped[str | None] = mapped_column(nullable=True)
 
@@ -61,8 +61,8 @@ class BacktestTradeModel(Base, UUIDPrimaryKeyMixin):
     quantity: Mapped[Decimal] = mapped_column(nullable=False)
     entry_price: Mapped[Decimal] = mapped_column(nullable=False)
     exit_price: Mapped[Decimal | None] = mapped_column(nullable=True)
-    entry_time: Mapped[datetime] = mapped_column(nullable=False)
-    exit_time: Mapped[datetime | None] = mapped_column(nullable=True)
+    entry_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    exit_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     pnl: Mapped[Decimal | None] = mapped_column(nullable=True)
     commission: Mapped[Decimal] = mapped_column(default=Decimal("0"))
     slippage: Mapped[Decimal] = mapped_column(default=Decimal("0"))
