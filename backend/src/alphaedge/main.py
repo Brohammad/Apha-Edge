@@ -13,6 +13,10 @@ from starlette.responses import Response
 
 from alphaedge.config import settings
 from alphaedge.modules.identity.presentation.router import router as auth_router
+from alphaedge.modules.market_data.presentation.router import (
+    instruments_router,
+    market_data_router,
+)
 from alphaedge.shared.domain.exceptions import DomainException
 from alphaedge.shared.infrastructure.database import engine
 from alphaedge.shared.infrastructure.logging import setup_logging
@@ -124,6 +128,8 @@ def register_routes(app: FastAPI) -> None:
     api_v1 = APIRouter(prefix="/api/v1")
 
     api_v1.include_router(auth_router)
+    api_v1.include_router(instruments_router)
+    api_v1.include_router(market_data_router)
 
     @api_v1.get("/health/live", tags=["Health"])
     async def liveness():
