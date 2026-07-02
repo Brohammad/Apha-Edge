@@ -19,6 +19,7 @@ REQUIRED_TABLES = (
     "strategies",
     "strategy_versions",
     "backtest_runs",
+    "optimization_runs",
     "portfolios",
 )
 

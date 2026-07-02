@@ -168,20 +168,24 @@ Development proceeds in **phases**, each delivering a vertical slice of function
 
 ---
 
-## Phase 6 — Optimization Engine
+## Phase 6 — Optimization Engine ✅
+
+**Status:** Complete
 
 **Goal:** Automated strategy parameter optimization.
 
 **Deliverables:**
-- [ ] Grid search optimizer (parallel via Celery)
-- [ ] Optimization run management
-- [ ] Trial result storage and ranking
-- [ ] Optimization API
-- [ ] Walk-forward testing support
+- [x] Grid search optimizer (parallel trial tasks via Celery)
+- [x] Optimization run management
+- [x] Trial result storage and ranking
+- [x] Optimization API
+- [x] Walk-forward testing support
 
 **Database tables:** `optimization_runs`, `optimization_trials`
 
 **API endpoints:** `/optimization-runs/*`
+
+**Tests:** Grid/walk-forward domain unit tests, optimization integration tests.
 
 ---
 
@@ -307,6 +311,7 @@ flowchart TD
 | Phase 4 — Backtesting | ✅ Complete |
 | Phase 4b — C++ Layer | ✅ Complete |
 | Phase 5 — Portfolio & Risk | ✅ Complete |
-| Phase 6–11 | 🔒 Not started |
+| Phase 6 — Optimization | ✅ Complete |
+| Phase 7–11 | 🔒 Not started |
 
-**Action required:** Review Phase 5 implementation and approve Phase 6 to begin optimization engine.
+**Action required:** Review Phase 6 implementation and approve Phase 7 to begin execution layer.

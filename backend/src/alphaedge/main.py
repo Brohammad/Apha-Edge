@@ -18,6 +18,7 @@ from alphaedge.modules.market_data.presentation.router import (
     instruments_router,
     market_data_router,
 )
+from alphaedge.modules.optimization.presentation.router import optimization_router
 from alphaedge.modules.portfolio.presentation.router import portfolios_router
 from alphaedge.modules.risk.presentation.router import risk_router
 from alphaedge.modules.strategy.presentation.router import (
@@ -140,6 +141,7 @@ def register_routes(app: FastAPI) -> None:
     api_v1.include_router(strategies_router)
     api_v1.include_router(indicators_router)
     api_v1.include_router(backtest_router)
+    api_v1.include_router(optimization_router)
     api_v1.include_router(portfolios_router)
     api_v1.include_router(risk_router)
 

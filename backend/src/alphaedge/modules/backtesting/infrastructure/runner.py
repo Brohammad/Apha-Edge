@@ -48,13 +48,18 @@ async def execute_backtest(run_id: UUID) -> None:
             config = BacktestConfig.from_dict(run.config)
             bars_by_instrument = await _load_bars(session, config)
 
+            parameters = dict(version.parameters)
+            override = run.config.get("strategy_parameters")
+            if isinstance(override, dict):
+                parameters.update(override)
+
             engine = BacktestEngine(run_id, config)
             output = engine.run(
                 bars_by_instrument=bars_by_instrument,
                 strategy_type=strategy.strategy_type,
                 source_code=version.source_code,
                 strategy_name=strategy.name,
-                parameters=version.parameters,
+                parameters=parameters,
             )
 
             await result_repo.save(output.result)  # type: ignore[arg-type]
