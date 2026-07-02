@@ -1,5 +1,6 @@
 import socket
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -10,6 +11,30 @@ from psycopg import sql
 
 from alphaedge.config import settings
 from alphaedge.main import app
+from alphaedge.shared.infrastructure.logging import setup_logging
+
+REQUIRED_TABLES = ("users", "instruments", "strategies", "strategy_versions", "backtest_runs")
+
+
+@asynccontextmanager
+async def _test_lifespan(_app: object):
+    """Test lifespan: skip engine/redis teardown on each HTTP client exit."""
+    setup_logging()
+    yield
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _patch_app_lifespan_for_tests() -> None:
+    app.router.lifespan_context = _test_lifespan  # type: ignore[assignment]
+
+
+@pytest.fixture(autouse=True)
+async def _reset_redis_between_tests() -> AsyncGenerator[None, None]:
+    yield
+    from alphaedge.shared.infrastructure import redis as redis_module
+
+    if redis_module._redis_client is not None:
+        await redis_module.close_redis()
 
 REQUIRED_TABLES = ("users", "instruments", "strategies", "strategy_versions", "backtest_runs")
 
