@@ -6,6 +6,7 @@ from alphaedge.modules.insights.domain.entities import InsightReport
 from alphaedge.modules.insights.domain.enums import InsightStatus
 from alphaedge.modules.insights.domain.prompts import PROMPT_VERSION, get_prompt, render_prompt
 from alphaedge.modules.insights.infrastructure.context_loader import build_context
+from alphaedge.modules.insights.infrastructure.generation_footer import append_generation_details
 from alphaedge.modules.insights.infrastructure.mock_llm import MockLLMProvider
 from alphaedge.modules.insights.infrastructure.models import (
     SQLAlchemyInsightReportRepository,
@@ -52,12 +53,23 @@ async def execute_insight(request_id: UUID) -> None:
                 context=context,
             )
 
+            content = append_generation_details(
+                response.content,
+                llm_provider=response.provider,
+                model=response.model,
+                prompt_version=PROMPT_VERSION,
+                prompt_tokens=response.prompt_tokens,
+                completion_tokens=response.completion_tokens,
+                llm_provider_configured=settings.llm_provider,
+            )
+
             report = InsightReport.create(
                 insight_request_id=request.id,
-                content=response.content,
+                content=content,
                 metadata={
                     "llm_provider": response.provider,
                     "llm_provider_configured": settings.llm_provider,
+                    "llm_model": response.model,
                     "model": response.model,
                     "prompt_version": PROMPT_VERSION,
                     "prompt_tokens": response.prompt_tokens,

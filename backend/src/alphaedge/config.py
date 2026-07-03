@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     cpp_engine: Literal["auto", "off", "require"] = "auto"
 
     openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
     llm_provider: Literal["mock", "openai"] = "mock"
 
     # OAuth (Google, GitHub)

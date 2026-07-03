@@ -447,6 +447,7 @@ Copy `.env.example` to `.env` in the repo root. Key variables:
 | `ALPACA_API_KEY/SECRET` | Broker execution | empty |
 | `OPENAI_API_KEY` | AI insights (required when `LLM_PROVIDER=openai`) | empty |
 | `LLM_PROVIDER` | Insight generator: `mock` (local, offline) or `openai` | `mock` |
+| `OPENAI_MODEL` | OpenAI chat model for insights | `gpt-4o-mini` |
 | `RATE_LIMIT_ENABLED` | API rate limiting | `true` (set `false` for local e2e) |
 | `LIVE_TRADING_ENABLED` | Allow live (non-paper) orders | `false` |
 | `CPP_ENGINE` | C++ backtest: `auto` / `off` / `require` | `auto` |

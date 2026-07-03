@@ -9,9 +9,9 @@ from alphaedge.shared.domain.exceptions import ValidationError
 class OpenAILLMProvider(LLMProvider):
     """OpenAI-compatible chat completions API."""
 
-    def __init__(self, api_key: str | None = None, model: str = "gpt-4o-mini") -> None:
+    def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
         self._api_key = api_key or settings.openai_api_key
-        self._model = model
+        self._model = model or settings.openai_model
         if not self._api_key:
             raise ValidationError("OPENAI_API_KEY is required for OpenAI LLM provider")
 
