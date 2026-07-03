@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alphaedge-api
+  labels:
+    app: alphaedge-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: alphaedge-api
+  template:
+    metadata:
+      labels:
+        app: alphaedge-api
+    spec:
+      containers:
+        - name: api
+          image: alphaedge-api:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: alphaedge-secrets
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health/ready
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alphaedge-api
+spec:
+  selector:
+    app: alphaedge-api
+  ports:
+    - port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alphaedge-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alphaedge-worker
+  template:
+    metadata:
+      labels:
+        app: alphaedge-worker
+    spec:
+      containers:
+        - name: worker
+          image: alphaedge-worker:latest
+          envFrom:
+            - secretRef:
+                name: alphaedge-secrets
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: alphaedge
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+spec:
+  rules:
+    - host: api.alphaedge.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: alphaedge-api
+                port:
+                  number: 8000

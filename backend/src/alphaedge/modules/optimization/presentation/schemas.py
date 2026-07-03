@@ -8,9 +8,10 @@ class SubmitOptimizationRequest(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     method: str = Field(default="grid_search")
     objective: str = Field(default="sharpe_ratio")
-    parameter_space: dict[str, list[object]]
+    parameter_space: dict[str, object]
     backtest_config: dict[str, object]
     walk_forward_config: dict[str, object] | None = None
+    optimizer_config: dict[str, object] | None = None
 
 
 class OptimizationRunResponse(BaseModel):
@@ -23,6 +24,7 @@ class OptimizationRunResponse(BaseModel):
     parameter_space: dict[str, object]
     backtest_config: dict[str, object]
     walk_forward_config: dict[str, object] | None
+    optimizer_config: dict[str, object] | None
     status: str
     best_trial_id: str | None
     total_trials: int

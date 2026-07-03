@@ -13,6 +13,7 @@ class SubmitOptimizationCommand:
     parameter_space: dict[str, object]
     backtest_config: dict[str, object]
     walk_forward_config: dict[str, object] | None = None
+    optimizer_config: dict[str, object] | None = None
 
 
 @dataclass(frozen=True)
@@ -51,6 +52,7 @@ class OptimizationRunDTO:
     parameter_space: dict[str, object]
     backtest_config: dict[str, object]
     walk_forward_config: dict[str, object] | None
+    optimizer_config: dict[str, object] | None
     status: str
     best_trial_id: UUID | None
     total_trials: int
@@ -74,6 +76,7 @@ class OptimizationRunDTO:
             parameter_space=entity.parameter_space,
             backtest_config=entity.backtest_config,
             walk_forward_config=entity.walk_forward_config,
+            optimizer_config=entity.optimizer_config,
             status=entity.status.value,
             best_trial_id=entity.best_trial_id,
             total_trials=entity.total_trials,

@@ -52,6 +52,10 @@ async def execute_optimization(run_id: UUID) -> None:
         try:
             if run.method == OptimizationMethod.WALK_FORWARD:
                 await _execute_walk_forward(session, run, run_repo, trial_repo, backtest_run_repo)
+            elif run.method == OptimizationMethod.GENETIC:
+                await _execute_genetic(session, run, run_repo, trial_repo, backtest_run_repo)
+            elif run.method == OptimizationMethod.BAYESIAN:
+                await _execute_bayesian(session, run, run_repo, trial_repo, backtest_run_repo)
             else:
                 await _execute_grid_search(session, run, run_repo, trial_repo, backtest_run_repo)
             await session.commit()
@@ -125,6 +129,118 @@ async def _execute_grid_search(
         if trial.status == TrialStatus.COMPLETED:
             continue
         await _run_trial_backtest(session, run, trial, trial_repo, backtest_run_repo, result_repo)
+        run.completed_trials += 1
+        await run_repo.update(run)
+        await session.commit()
+
+    await _finalize_run(run.id)
+
+
+async def _execute_genetic(
+    session,
+    run: OptimizationRun,
+    run_repo: SQLAlchemyOptimizationRunRepository,
+    trial_repo: SQLAlchemyOptimizationTrialRepository,
+    backtest_run_repo: SQLAlchemyBacktestRunRepository,
+) -> None:
+    import random
+
+    from alphaedge.modules.optimization.domain.genetic import (
+        next_generation,
+        parse_bounds,
+        random_individual,
+    )
+
+    cfg = run.optimizer_config or {}
+    pop_size = int(cfg.get("population_size", 12))
+    generations = int(cfg.get("generations", 4))
+    mutation_rate = float(cfg.get("mutation_rate", 0.15))
+    elite_count = int(cfg.get("elite_count", 2))
+    rng = random.Random(int(cfg.get("seed", 42)))
+    bounds = parse_bounds(run.parameter_space)
+    result_repo = SQLAlchemyBacktestResultRepository(session)
+
+    population = [random_individual(bounds, rng) for _ in range(pop_size)]
+    run.total_trials = pop_size * generations
+    run.completed_trials = 0
+    await run_repo.update(run)
+    await session.commit()
+
+    for _gen in range(generations):
+        fitness: list[float | None] = []
+        for params in population:
+            trial = OptimizationTrial.create(run.id, params)
+            await trial_repo.save(trial)
+            config = merge_backtest_config(run.backtest_config, strategy_parameters=params)
+            value = await _run_backtest_for_trial(
+                session,
+                run,
+                trial,
+                config,
+                backtest_run_repo,
+                result_repo,
+                trial_repo,
+            )
+            fitness.append(float(value) if value is not None else None)
+            run.completed_trials += 1
+            await run_repo.update(run)
+            await session.commit()
+
+        if _gen < generations - 1:
+            population = next_generation(
+                population,
+                fitness,
+                bounds,
+                population_size=pop_size,
+                mutation_rate=mutation_rate,
+                elite_count=elite_count,
+                rng=rng,
+            )
+
+    await _finalize_run(run.id)
+
+
+async def _execute_bayesian(
+    session,
+    run: OptimizationRun,
+    run_repo: SQLAlchemyOptimizationRunRepository,
+    trial_repo: SQLAlchemyOptimizationTrialRepository,
+    backtest_run_repo: SQLAlchemyBacktestRunRepository,
+) -> None:
+    import optuna
+
+    from alphaedge.modules.optimization.domain.bayesian import (
+        default_optimizer_config,
+        suggest_parameters,
+    )
+
+    cfg = default_optimizer_config(run.optimizer_config)
+    n_trials = int(cfg["n_trials"])
+    result_repo = SQLAlchemyBacktestResultRepository(session)
+    study = optuna.create_study(direction="maximize")
+
+    run.total_trials = n_trials
+    run.completed_trials = 0
+    await run_repo.update(run)
+    await session.commit()
+
+    for _ in range(n_trials):
+        optuna_trial = study.ask()
+        params = suggest_parameters(optuna_trial, run.parameter_space)
+        trial = OptimizationTrial.create(run.id, params)
+        await trial_repo.save(trial)
+        config = merge_backtest_config(run.backtest_config, strategy_parameters=params)
+        value = await _run_backtest_for_trial(
+            session,
+            run,
+            trial,
+            config,
+            backtest_run_repo,
+            result_repo,
+            trial_repo,
+        )
+        objective = float(value) if value is not None else float("-inf")
+        study.tell(optuna_trial, objective)
         run.completed_trials += 1
         await run_repo.update(run)
         await session.commit()

@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -64,23 +65,25 @@ async def test_backtest_full_run_with_results(auth_client: AsyncClient, require_
 
     end = datetime.now(UTC)
     start = end - timedelta(days=100)
-    submit = await auth_client.post(
-        "/api/v1/backtest-runs",
-        json={
-            "strategy_version_id": version_id,
-            "name": "Full integration backtest",
-            "config": {
-                "instrument_ids": [str(instrument_id)],
-                "timeframe": "1d",
-                "start_date": start.isoformat(),
-                "end_date": end.isoformat(),
-                "initial_capital": "100000",
-                "slippage": {"model": "fixed", "value": "0.01"},
-                "commission": {"per_trade": "1.0"},
-                "position_sizing": {"model": "percent_equity", "value": "0.1"},
+    with patch("alphaedge.modules.backtesting.presentation.router.run_backtest_task") as mock_task:
+        mock_task.delay.return_value = MagicMock(id="test-celery-id")
+        submit = await auth_client.post(
+            "/api/v1/backtest-runs",
+            json={
+                "strategy_version_id": version_id,
+                "name": "Full integration backtest",
+                "config": {
+                    "instrument_ids": [str(instrument_id)],
+                    "timeframe": "1d",
+                    "start_date": start.isoformat(),
+                    "end_date": end.isoformat(),
+                    "initial_capital": "100000",
+                    "slippage": {"model": "fixed", "value": "0.01"},
+                    "commission": {"per_trade": "1.0"},
+                    "position_sizing": {"model": "percent_equity", "value": "0.1"},
+                },
             },
-        },
-    )
+        )
     assert submit.status_code == 202
     run_id = submit.json()["data"]["id"]
 
@@ -143,22 +146,24 @@ async def _create_instrument(auth_client: AsyncClient) -> str:
 async def _submit_backtest(auth_client: AsyncClient, version_id: str, instrument_id: str) -> str:
     end = datetime.now(UTC)
     start = end - timedelta(days=30)
-    submit = await auth_client.post(
-        "/api/v1/backtest-runs",
-        json={
-            "strategy_version_id": version_id,
-            "name": "Integration backtest",
-            "config": {
-                "instrument_ids": [instrument_id],
-                "timeframe": "1d",
-                "start_date": start.isoformat(),
-                "end_date": end.isoformat(),
-                "initial_capital": "100000",
-                "slippage": {"model": "fixed", "value": "0.01"},
-                "commission": {"per_trade": "1.0"},
-                "position_sizing": {"model": "percent_equity", "value": "0.1"},
+    with patch("alphaedge.modules.backtesting.presentation.router.run_backtest_task") as mock_task:
+        mock_task.delay.return_value = MagicMock(id="test-celery-id")
+        submit = await auth_client.post(
+            "/api/v1/backtest-runs",
+            json={
+                "strategy_version_id": version_id,
+                "name": "Integration backtest",
+                "config": {
+                    "instrument_ids": [instrument_id],
+                    "timeframe": "1d",
+                    "start_date": start.isoformat(),
+                    "end_date": end.isoformat(),
+                    "initial_capital": "100000",
+                    "slippage": {"model": "fixed", "value": "0.01"},
+                    "commission": {"per_trade": "1.0"},
+                    "position_sizing": {"model": "percent_equity", "value": "0.1"},
+                },
             },
-        },
-    )
+        )
     assert submit.status_code == 202
     return submit.json()["data"]["id"]

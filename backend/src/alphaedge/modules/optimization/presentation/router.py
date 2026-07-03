@@ -61,6 +61,7 @@ def _to_run(dto: object) -> dict:
         parameter_space=dto.parameter_space,
         backtest_config=dto.backtest_config,
         walk_forward_config=dto.walk_forward_config,
+        optimizer_config=dto.optimizer_config,
         status=dto.status,
         best_trial_id=str(dto.best_trial_id) if dto.best_trial_id else None,
         total_trials=dto.total_trials,
@@ -108,6 +109,7 @@ async def submit_optimization(
             parameter_space=body.parameter_space,
             backtest_config=body.backtest_config,
             walk_forward_config=body.walk_forward_config,
+            optimizer_config=body.optimizer_config,
         )
     )
 

@@ -13,6 +13,7 @@ from starlette.responses import Response
 
 from alphaedge.config import settings
 from alphaedge.modules.backtesting.presentation.router import backtest_router
+from alphaedge.modules.collaboration.presentation.router import collaboration_router
 from alphaedge.modules.execution.presentation.router import (
     broker_connections_router,
     orders_router,
@@ -24,7 +25,9 @@ from alphaedge.modules.market_data.presentation.router import (
     market_data_router,
 )
 from alphaedge.modules.market_data.presentation.ws import ws_router
+from alphaedge.modules.marketplace.presentation.router import marketplace_router
 from alphaedge.modules.optimization.presentation.router import optimization_router
+from alphaedge.modules.organization.presentation.router import organizations_router
 from alphaedge.modules.portfolio.presentation.router import portfolios_router
 from alphaedge.modules.risk.presentation.router import risk_router
 from alphaedge.modules.strategy.presentation.router import (
@@ -148,6 +151,9 @@ def register_routes(app: FastAPI) -> None:
     api_v1 = APIRouter(prefix="/api/v1")
 
     api_v1.include_router(auth_router)
+    api_v1.include_router(organizations_router)
+    api_v1.include_router(marketplace_router)
+    api_v1.include_router(collaboration_router)
     api_v1.include_router(instruments_router)
     api_v1.include_router(market_data_router)
     api_v1.include_router(strategies_router)

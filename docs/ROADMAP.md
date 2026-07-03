@@ -278,15 +278,20 @@ Development proceeds in **phases**, each delivering a vertical slice of function
 
 ---
 
-## Phase 11 — Advanced Features (Future)
+## Phase 11 — Advanced Features ✅
 
-- Bayesian optimization (Optuna)
-- Genetic algorithm optimizer
-- Kubernetes deployment
-- TimescaleDB for market data
-- Multi-tenant support
-- Strategy marketplace
-- Real-time collaboration on strategies
+**Status:** Complete
+
+**Goal:** Next-generation quant platform capabilities.
+
+**Deliverables:**
+- [x] Bayesian optimization (Optuna) — `method: bayesian`
+- [x] Genetic algorithm optimizer — `method: genetic`
+- [x] Kubernetes deployment manifests (`infrastructure/k8s/`)
+- [x] TimescaleDB extension migration (optional hypertable path)
+- [x] Multi-tenant organizations (`/organizations/*`)
+- [x] Strategy marketplace (`/marketplace/*` publish, list, clone)
+- [x] Real-time strategy collaboration (`/collaboration/*` + WebSocket)
 
 ---
 
@@ -333,6 +338,6 @@ flowchart TD
 | Phase 8 — AI Insights | ✅ Complete |
 | Phase 9 — Frontend | ✅ Complete |
 | Phase 10 — Production Hardening | ✅ Complete |
-| Phase 11 | 🔒 Future |
+| Phase 11 — Advanced Features | ✅ Complete |
 
-**Action required:** Review Phase 10 and prioritize Phase 11 advanced features.
+**All roadmap phases complete.** Future work: live trading production rollout, mobile app, strategy marketplace payments.

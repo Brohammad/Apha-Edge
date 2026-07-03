@@ -4,6 +4,8 @@ from enum import StrEnum
 class OptimizationMethod(StrEnum):
     GRID_SEARCH = "grid_search"
     WALK_FORWARD = "walk_forward"
+    BAYESIAN = "bayesian"
+    GENETIC = "genetic"
 
 
 class OptimizationStatus(StrEnum):

@@ -33,6 +33,7 @@ class OptimizationRunModel(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     parameter_space: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
     backtest_config: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
     walk_forward_config: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
+    optimizer_config: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
     status: Mapped[str] = mapped_column(default=OptimizationStatus.QUEUED.value, index=True)
     best_trial_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
     total_trials: Mapped[int] = mapped_column(default=0)
@@ -73,6 +74,7 @@ def _run_to_entity(model: OptimizationRunModel) -> OptimizationRun:
         parameter_space=model.parameter_space,
         backtest_config=model.backtest_config,
         walk_forward_config=model.walk_forward_config,
+        optimizer_config=model.optimizer_config,
         status=OptimizationStatus(model.status),
         best_trial_id=model.best_trial_id,
         total_trials=model.total_trials,
@@ -116,6 +118,7 @@ class SQLAlchemyOptimizationRunRepository(OptimizationRunRepository):
             parameter_space=run.parameter_space,
             backtest_config=run.backtest_config,
             walk_forward_config=run.walk_forward_config,
+            optimizer_config=run.optimizer_config,
             status=run.status.value,
             best_trial_id=run.best_trial_id,
             total_trials=run.total_trials,

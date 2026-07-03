@@ -59,6 +59,14 @@ class SubmitOptimizationHandler:
         if method == OptimizationMethod.WALK_FORWARD and not command.walk_forward_config:
             raise ValidationError("walk_forward_config is required for walk_forward method")
 
+        if method in (OptimizationMethod.GENETIC, OptimizationMethod.BAYESIAN):
+            from alphaedge.modules.optimization.domain.genetic import parse_bounds
+
+            try:
+                parse_bounds(command.parameter_space)
+            except ValueError as exc:
+                raise ValidationError(str(exc)) from exc
+
         run = OptimizationRun.create(
             user_id=command.user_id,
             strategy_version_id=command.strategy_version_id,
@@ -68,6 +76,7 @@ class SubmitOptimizationHandler:
             parameter_space=command.parameter_space,
             backtest_config=command.backtest_config,
             walk_forward_config=command.walk_forward_config,
+            optimizer_config=command.optimizer_config,
         )
         saved = await self._run_repo.save(run)
         return OptimizationRunDTO.from_entity(saved)

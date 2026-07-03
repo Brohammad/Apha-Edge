@@ -24,6 +24,7 @@ class OptimizationRun:
     backtest_config: dict[str, object]
     status: OptimizationStatus
     walk_forward_config: dict[str, object] | None = None
+    optimizer_config: dict[str, object] | None = None
     best_trial_id: UUID | None = None
     total_trials: int = 0
     completed_trials: int = 0
@@ -44,6 +45,7 @@ class OptimizationRun:
         parameter_space: dict[str, object],
         backtest_config: dict[str, object],
         walk_forward_config: dict[str, object] | None = None,
+        optimizer_config: dict[str, object] | None = None,
     ) -> "OptimizationRun":
         name = name.strip()
         if not name:
@@ -60,6 +62,7 @@ class OptimizationRun:
             parameter_space=parameter_space,
             backtest_config=backtest_config,
             walk_forward_config=walk_forward_config,
+            optimizer_config=optimizer_config,
             status=OptimizationStatus.QUEUED,
         )
 
