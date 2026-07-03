@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -59,13 +60,17 @@ async def test_grid_search_optimization_full_run(auth_client: AsyncClient, requi
     bar_count = await seed_mock_bars(instrument_id, symbol, days=120)
     assert bar_count > 20
 
-    run_id = await _submit_optimization(
-        auth_client,
-        version_id,
-        str(instrument_id),
-        grid_size=2,
-        days=100,
-    )
+    with patch(
+        "alphaedge.modules.optimization.presentation.router.run_optimization_task"
+    ) as mock_task:
+        mock_task.delay.return_value = MagicMock(id="test-celery-id")
+        run_id = await _submit_optimization(
+            auth_client,
+            version_id,
+            str(instrument_id),
+            grid_size=2,
+            days=100,
+        )
 
     await execute_optimization(UUID(run_id))
 

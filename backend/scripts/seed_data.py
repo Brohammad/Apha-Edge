@@ -9,6 +9,12 @@ from sqlalchemy import select
 from alphaedge.modules.identity.domain.entities import RoleName
 from alphaedge.modules.identity.infrastructure.models import RoleModel
 from alphaedge.modules.market_data.domain.entities import IngestionJob, Instrument
+from alphaedge.modules.market_data.domain.enums import AssetClass, Timeframe
+from alphaedge.modules.market_data.infrastructure.ingestion import execute_ingestion
+from alphaedge.modules.market_data.infrastructure.models import (
+    IngestionJobModel,
+    InstrumentModel,
+)
 from alphaedge.shared.infrastructure.database import async_session_factory
 
 DEFAULT_ROLES = [

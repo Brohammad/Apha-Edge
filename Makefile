@@ -1,4 +1,4 @@
-.PHONY: dev dev-down test test-unit test-integration lint migrate seed install build-cpp benchmark
+.PHONY: dev dev-down test test-unit test-integration lint migrate seed install build-cpp benchmark frontend-dev frontend-build frontend-lint
 
 install:
 	cd backend && pip install -e ".[dev]"
@@ -46,3 +46,12 @@ migrate-create:
 
 seed:
 	cd backend && python -m scripts.seed_data
+
+frontend-dev:
+	cd frontend && npm run dev
+
+frontend-build:
+	cd frontend && npm run build
+
+frontend-lint:
+	cd frontend && npm run lint

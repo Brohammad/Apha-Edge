@@ -236,19 +236,26 @@ Development proceeds in **phases**, each delivering a vertical slice of function
 
 ---
 
-## Phase 9 — Frontend
+## Phase 9 — Frontend ✅
+
+**Status:** Complete
 
 **Goal:** React dashboard for core workflows.
 
 **Deliverables:**
-- [ ] Auth pages (login, register)
-- [ ] Strategy editor (Python + DSL)
-- [ ] Backtest submission and results dashboard
-- [ ] Portfolio overview
-- [ ] Risk dashboard with charts
-- [ ] Order management view
-- [ ] AI insights viewer
-- [ ] Responsive layout with Tailwind
+- [x] Auth pages (login, register)
+- [x] Strategy editor (Python + DSL)
+- [x] Backtest submission and results dashboard
+- [x] Portfolio overview
+- [x] Risk dashboard with charts
+- [x] Order management view
+- [x] AI insights viewer
+- [x] Responsive layout with Tailwind
+- [x] Trading-terminal UI (ticker tape, market clock, activity feed, dark theme)
+
+**Stack:** React 19, Vite, Tailwind CSS v4, TanStack Query, Recharts.
+
+**Run:** `cd frontend && npm install && npm run dev` (API proxy → `localhost:8000`).
 
 ---
 
@@ -322,6 +329,7 @@ flowchart TD
 | Phase 6 — Optimization | ✅ Complete |
 | Phase 7 — Execution | ✅ Complete |
 | Phase 8 — AI Insights | ✅ Complete |
-| Phase 9–11 | 🔒 Not started |
+| Phase 9 — Frontend | ✅ Complete |
+| Phase 10–11 | 🔒 Not started |
 
-**Action required:** Review Phase 8 implementation and approve Phase 9 to begin frontend dashboard.
+**Action required:** Review Phase 9 frontend and approve Phase 10 to begin production hardening.

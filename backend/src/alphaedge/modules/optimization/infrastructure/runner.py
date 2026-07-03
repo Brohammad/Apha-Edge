@@ -38,7 +38,10 @@ async def execute_optimization(run_id: UUID) -> None:
         backtest_run_repo = SQLAlchemyBacktestRunRepository(session)
 
         run = await run_repo.get_by_id(run_id)
-        if not run or run.status == OptimizationStatus.CANCELLED:
+        if not run or run.status in (
+            OptimizationStatus.CANCELLED,
+            OptimizationStatus.COMPLETED,
+        ):
             return
 
         run.status = OptimizationStatus.RUNNING
@@ -100,17 +103,27 @@ async def _execute_grid_search(
     trial_repo: SQLAlchemyOptimizationTrialRepository,
     backtest_run_repo: SQLAlchemyBacktestRunRepository,
 ) -> None:
-    combos = generate_grid_combinations(run.parameter_space)
-    trials = [OptimizationTrial.create(run.id, params) for params in combos]
-    await trial_repo.save_many(trials)
+    existing = await trial_repo.list_by_run_id(run.id)
+    if existing:
+        trials = existing
+        run.total_trials = len(trials)
+        run.completed_trials = sum(1 for t in trials if t.status == TrialStatus.COMPLETED)
+        await run_repo.update(run)
+        await session.commit()
+    else:
+        combos = generate_grid_combinations(run.parameter_space)
+        trials = [OptimizationTrial.create(run.id, params) for params in combos]
+        await trial_repo.save_many(trials)
 
-    run.total_trials = len(trials)
-    run.completed_trials = 0
-    await run_repo.update(run)
-    await session.commit()
+        run.total_trials = len(trials)
+        run.completed_trials = 0
+        await run_repo.update(run)
+        await session.commit()
 
     result_repo = SQLAlchemyBacktestResultRepository(session)
     for trial in trials:
+        if trial.status == TrialStatus.COMPLETED:
+            continue
         await _run_trial_backtest(session, run, trial, trial_repo, backtest_run_repo, result_repo)
         run.completed_trials += 1
         await run_repo.update(run)

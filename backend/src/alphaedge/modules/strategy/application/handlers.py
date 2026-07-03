@@ -210,12 +210,12 @@ class ValidateStrategyVersionHandler:
             errors.append(exc.message)
         except Exception as exc:
             errors.append(str(exc))
-            return ValidationResultDTO(
-                version_id=version.id,
-                status=version.status.value,
-                compiled_hash=version.compiled_hash or "",
-                errors=errors,
-            )
+        return ValidationResultDTO(
+            version_id=version.id,
+            status=version.status.value,
+            compiled_hash=version.compiled_hash or "",
+            errors=errors,
+        )
 
 
 class ListIndicatorsHandler:
