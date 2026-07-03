@@ -15,10 +15,10 @@ from alphaedge.modules.insights.infrastructure.openai_llm import OpenAILLMProvid
 from alphaedge.shared.infrastructure.database import async_session_factory
 
 
-def _get_llm_provider():
+def _get_llm_provider() -> tuple[str, object]:
     if settings.llm_provider == "openai" and settings.openai_api_key:
-        return OpenAILLMProvider()
-    return MockLLMProvider()
+        return "openai", OpenAILLMProvider()
+    return "mock", MockLLMProvider()
 
 
 async def execute_insight(request_id: UUID) -> None:
@@ -45,17 +45,24 @@ async def execute_insight(request_id: UUID) -> None:
             template = get_prompt(request.insight_type, PROMPT_VERSION)
             prompt = render_prompt(template, context)
 
-            llm = _get_llm_provider()
-            response = await llm.complete(prompt)
+            llm_provider, llm = _get_llm_provider()
+            response = await llm.complete(
+                prompt,
+                insight_type=request.insight_type,
+                context=context,
+            )
 
             report = InsightReport.create(
                 insight_request_id=request.id,
                 content=response.content,
                 metadata={
+                    "llm_provider": response.provider,
+                    "llm_provider_configured": settings.llm_provider,
                     "model": response.model,
                     "prompt_version": PROMPT_VERSION,
                     "prompt_tokens": response.prompt_tokens,
                     "completion_tokens": response.completion_tokens,
+                    "total_tokens": response.prompt_tokens + response.completion_tokens,
                     "insight_type": request.insight_type.value,
                 },
             )

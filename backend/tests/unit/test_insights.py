@@ -26,7 +26,18 @@ def test_get_prompt_unknown_version():
 @pytest.mark.asyncio
 async def test_mock_llm_returns_markdown():
     provider = MockLLMProvider()
-    response = await provider.complete("Analyze this strategy.\n\nDetails here.")
-    assert response.content.startswith("# AI Insight Report")
+    response = await provider.complete(
+        "unused prompt",
+        insight_type=InsightType.STRATEGY_EXPLANATION,
+        context={
+            "strategy_name": "Premium Alpha",
+            "strategy_type": "dsl",
+            "parameters": {},
+            "source_code": "name: paid\nsignals: []\n",
+        },
+    )
+    assert response.content.startswith("# Strategy insight:")
+    assert "no trading signals" in response.content.lower()
+    assert "Provide:" not in response.content
     assert response.model == "mock-llm-v1"
     assert response.prompt_tokens > 0

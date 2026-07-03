@@ -15,7 +15,7 @@ class OpenAILLMProvider(LLMProvider):
         if not self._api_key:
             raise ValidationError("OPENAI_API_KEY is required for OpenAI LLM provider")
 
-    async def complete(self, prompt: str) -> LLMResponse:
+    async def complete(self, prompt: str, **kwargs: object) -> LLMResponse:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
                 "https://api.openai.com/v1/chat/completions",
@@ -42,6 +42,7 @@ class OpenAILLMProvider(LLMProvider):
         usage = data.get("usage", {})
         return LLMResponse(
             content=str(choice),
+            provider="openai",
             model=str(data.get("model", self._model)),
             prompt_tokens=int(usage.get("prompt_tokens", 0)),
             completion_tokens=int(usage.get("completion_tokens", 0)),

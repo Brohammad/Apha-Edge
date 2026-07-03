@@ -14,6 +14,72 @@ const TYPE_LABELS: Record<string, string> = {
   trade_summary: 'Trade summary',
 }
 
+function metaString(metadata: Record<string, unknown>, key: string): string | null {
+  const value = metadata[key]
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : null
+}
+
+function InsightMetadata({ metadata, createdAt }: { metadata: Record<string, unknown>; createdAt: string }) {
+  const provider = metaString(metadata, 'llm_provider')
+  const configured = metaString(metadata, 'llm_provider_configured')
+  const model = metaString(metadata, 'model')
+  const promptVersion = metaString(metadata, 'prompt_version')
+  const insightType = metaString(metadata, 'insight_type')
+  const promptTokens = metaString(metadata, 'prompt_tokens')
+  const completionTokens = metaString(metadata, 'completion_tokens')
+  const totalTokens = metaString(metadata, 'total_tokens')
+  const isMock = provider === 'mock'
+  const configuredOpenAiButMock =
+    configured === 'openai' && provider === 'mock'
+
+  const rows: { label: string; value: string }[] = [
+    provider && { label: 'Provider used', value: provider },
+    configured && configured !== provider && {
+      label: 'Provider configured',
+      value: configured,
+    },
+    model && { label: 'Model', value: model },
+    promptVersion && { label: 'Prompt version', value: promptVersion },
+    insightType && { label: 'Insight type', value: insightType.replace(/_/g, ' ') },
+    promptTokens && { label: 'Prompt tokens', value: promptTokens },
+    completionTokens && { label: 'Completion tokens', value: completionTokens },
+    totalTokens && { label: 'Total tokens', value: totalTokens },
+    { label: 'Generated', value: fmtDateTime(createdAt) },
+  ].filter((row): row is { label: string; value: string } => Boolean(row))
+
+  return (
+    <div className="mt-6 space-y-4 border-t border-ink-700 pt-4">
+      {isMock && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+          <strong className="font-semibold">Demo mode.</strong>{' '}
+          {configuredOpenAiButMock ? (
+            <>
+              <code className="text-amber-100">LLM_PROVIDER=openai</code> is set but{' '}
+              <code className="text-amber-100">OPENAI_API_KEY</code> is missing, so AlphaEdge
+              fell back to the local mock generator.
+            </>
+          ) : (
+            <>
+              This report was synthesized locally without calling an external LLM. Set{' '}
+              <code className="text-amber-100">LLM_PROVIDER=openai</code> and{' '}
+              <code className="text-amber-100">OPENAI_API_KEY</code> in the API environment for
+              live AI analysis.
+            </>
+          )}
+        </div>
+      )}
+      <dl className="grid gap-3 sm:grid-cols-2">
+        {rows.map(({ label, value }) => (
+          <div key={label} className="rounded-lg border border-ink-700/80 bg-ink-900/40 px-3 py-2">
+            <dt className="font-mono text-[10px] uppercase tracking-wide text-ink-400">{label}</dt>
+            <dd className="mt-0.5 font-mono text-xs text-ink-100">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  )
+}
+
 // Minimal markdown-ish renderer: headings, bullets, bold, paragraphs.
 function renderContent(content: string) {
   const lines = content.split('\n')
@@ -118,15 +184,7 @@ export default function InsightDetailPage() {
       {report && (
         <div className="terminal-card animate-rise p-6">
           <div className="prose-invert">{renderContent(report.content)}</div>
-          <div className="mt-6 flex flex-wrap gap-4 border-t border-ink-700 pt-4 font-mono text-[11px] text-ink-400">
-            {typeof report.metadata.model === 'string' && (
-              <span>model: {report.metadata.model}</span>
-            )}
-            {typeof report.metadata.prompt_version === 'string' && (
-              <span>prompt: {report.metadata.prompt_version}</span>
-            )}
-            <span>generated: {fmtDateTime(report.created_at)}</span>
-          </div>
+          <InsightMetadata metadata={report.metadata} createdAt={report.created_at} />
         </div>
       )}
     </div>

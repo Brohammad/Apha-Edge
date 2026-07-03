@@ -79,6 +79,7 @@ def render_prompt(template: str, context: dict[str, object]) -> str:
 @dataclass(frozen=True)
 class LLMResponse:
     content: str
+    provider: str
     model: str
     prompt_tokens: int
     completion_tokens: int

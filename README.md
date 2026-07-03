@@ -445,7 +445,8 @@ Copy `.env.example` to `.env` in the repo root. Key variables:
 | `OAUTH_REDIRECT_BASE_URL` | Backend OAuth callback base | `http://localhost:8000/api/v1/auth/oauth` |
 | `OAUTH_FRONTEND_CALLBACK_URL` | Post-login frontend URL | `http://localhost:5173/oauth/callback` |
 | `ALPACA_API_KEY/SECRET` | Broker execution | empty |
-| `OPENAI_API_KEY` | AI insights (`LLM_PROVIDER=openai`) | empty |
+| `OPENAI_API_KEY` | AI insights (required when `LLM_PROVIDER=openai`) | empty |
+| `LLM_PROVIDER` | Insight generator: `mock` (local, offline) or `openai` | `mock` |
 | `RATE_LIMIT_ENABLED` | API rate limiting | `true` (set `false` for local e2e) |
 | `LIVE_TRADING_ENABLED` | Allow live (non-paper) orders | `false` |
 | `CPP_ENGINE` | C++ backtest: `auto` / `off` / `require` | `auto` |
@@ -462,6 +463,7 @@ Copy `.env.example` to `.env` in the repo root. Key variables:
 | Google "Access blocked" | Add your email as a test user in Google Cloud Console |
 | GitHub `redirect_uri_mismatch` | Callback must be `http://localhost:8000/api/v1/auth/oauth/github/callback` |
 | Stale AAPL price on home page | Set `ALPHA_VANTAGE_API_KEY` and restart API |
+| AI insight echoes the prompt / looks like a template | Default `LLM_PROVIDER=mock` uses a local generator; set `LLM_PROVIDER=openai` and `OPENAI_API_KEY` for live LLM reports |
 | `429 Rate limit exceeded` during tests | Start API with `RATE_LIMIT_ENABLED=false` |
 | `Admin role required` creating instruments | Use seed data or an admin account; instrument creation is admin-only in dev |
 

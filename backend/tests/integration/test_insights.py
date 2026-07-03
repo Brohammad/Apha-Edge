@@ -57,8 +57,11 @@ async def test_strategy_explain_generates_report(auth_client: AsyncClient, requi
     data = detail.json()["data"]
     assert data["request"]["status"] == "completed"
     assert data["report"] is not None
-    assert "AI Insight Report" in data["report"]["content"]
+    assert "Strategy insight:" in data["report"]["content"]
+    assert "signal" in data["report"]["content"].lower()
     assert data["report"]["metadata"]["model"] == "mock-llm-v1"
+    assert data["report"]["metadata"]["llm_provider"] == "mock"
+    assert data["report"]["metadata"]["prompt_version"] == "v1"
 
     await auth_client.delete(f"/api/v1/strategies/{strategy_id}")
 
