@@ -168,3 +168,41 @@ class TestCrossover:
 
     def test_no_crossover_without_history(self):
         assert not crossover(None, None, Decimal("11"), Decimal("10"))
+
+
+class TestDSLComparisons:
+    def test_rsi_oversold_dsl_validates(self):
+        dsl = """
+name: rsi_mean_reversion
+parameters:
+  rsi_period: 14
+  oversold: 30
+  overbought: 70
+signals:
+  - when: rsi(rsi_period) < oversold
+    then: BUY
+  - when: rsi(rsi_period) > overbought
+    then: SELL
+"""
+        data = DSLParser.parse(dsl)
+        DSLParser.validate(data)
+        compiled, _ = StrategyCompiler.validate_and_compile(
+            StrategyType.DSL, dsl, "rsi_mean_reversion"
+        )
+        assert compiled.signals[0].condition_root.kind == "compare"
+
+    def test_all_condition_validates(self):
+        dsl = """
+name: combo
+parameters:
+  fast: 10
+  slow: 30
+signals:
+  - when: all(crossover(sma(fast), sma(slow)), rsi(14) < 30)
+    then: BUY
+"""
+        data = DSLParser.parse(dsl)
+        DSLParser.validate(data)
+        compiled, _ = StrategyCompiler.validate_and_compile(StrategyType.DSL, dsl, "combo")
+        assert compiled.signals[0].condition_root.kind == "all"
+        assert len(compiled.signals[0].condition_root.children) == 2

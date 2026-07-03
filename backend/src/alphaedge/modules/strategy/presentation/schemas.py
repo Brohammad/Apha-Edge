@@ -57,3 +57,26 @@ class ValidationResultResponse(BaseModel):
     status: str
     compiled_hash: str
     errors: list[str]
+
+
+class CreateDeploymentRequest(BaseModel):
+    strategy_version_id: str
+    portfolio_id: str
+    broker_connection_id: str
+    instrument_ids: list[str] = Field(min_length=1)
+    quantity: str
+
+
+class DeploymentResponse(BaseModel):
+    id: str
+    user_id: str
+    strategy_version_id: str
+    portfolio_id: str
+    broker_connection_id: str
+    instrument_ids: list[str]
+    quantity: str
+    is_active: bool
+    last_signal_at: datetime | None
+    last_signal_action: str | None
+    created_at: datetime
+    updated_at: datetime

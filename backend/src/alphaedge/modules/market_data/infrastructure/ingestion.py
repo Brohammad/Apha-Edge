@@ -53,6 +53,12 @@ async def execute_ingestion(job_id: UUID) -> None:
                     for raw in raw_bars
                 ]
                 total_records += await bar_repo.upsert_many(domain_bars)
+                for bar in domain_bars:
+                    from alphaedge.modules.strategy.infrastructure.deployment_runner import (
+                        evaluate_deployments_for_bar,
+                    )
+
+                    await evaluate_deployments_for_bar(bar)
 
             job.status = IngestionStatus.COMPLETED
             job.records_count = total_records

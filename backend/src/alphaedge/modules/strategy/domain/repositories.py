@@ -6,6 +6,7 @@ from alphaedge.modules.strategy.domain.value_objects import (
     Strategy,
     StrategyVersion,
 )
+from alphaedge.modules.strategy.domain.deployment import StrategyDeployment
 
 
 class StrategyRepository(ABC):
@@ -67,4 +68,22 @@ class IndicatorRepository(ABC):
 
     @abstractmethod
     async def get_by_name(self, name: str) -> IndicatorDefinition | None:
+        pass
+
+
+class StrategyDeploymentRepository(ABC):
+    @abstractmethod
+    async def save(self, deployment: StrategyDeployment) -> StrategyDeployment:
+        pass
+
+    @abstractmethod
+    async def get_by_id(self, deployment_id: UUID) -> StrategyDeployment | None:
+        pass
+
+    @abstractmethod
+    async def list_by_user(self, user_id: UUID) -> list[StrategyDeployment]:
+        pass
+
+    @abstractmethod
+    async def list_active_for_instrument(self, instrument_id: UUID) -> list[StrategyDeployment]:
         pass

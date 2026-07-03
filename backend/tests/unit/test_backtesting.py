@@ -133,17 +133,34 @@ class TestBacktestEngine:
         assert output.result.total_trades >= 0
         assert len(output.result.equity_curve) == len(bars)
 
-    def test_python_strategy_rejected(self):
-        config = _make_config()
+    def test_python_strategy_runs(self):
+        iid = uuid4()
+        config = _make_config(instrument_ids=[str(iid)])
+        source = """
+from alphaedge.modules.strategy.domain import StrategyBase, Signal, SignalAction
+
+class AlwaysBuy(StrategyBase):
+    def __init__(self):
+        self._seen = 0
+
+    def on_bar(self, bar, context):
+        self._seen += 1
+        if self._seen == 3:
+            return Signal(action=SignalAction.BUY, reason="third bar")
+        if self._seen == 6:
+            return Signal(action=SignalAction.SELL, reason="sixth bar")
+        return None
+"""
+        bars = _make_bars(iid, ["10", "11", "12", "13", "14", "15", "16"])
         engine = BacktestEngine(uuid4(), config)
-        with pytest.raises(ValidationError, match="Python strategy"):
-            engine.run(
-                bars_by_instrument={},
-                strategy_type=StrategyType.PYTHON,
-                source_code="class S(StrategyBase): pass",
-                strategy_name="test",
-                parameters={},
-            )
+        output = engine.run(
+            bars_by_instrument={iid: bars},
+            strategy_type=StrategyType.PYTHON,
+            source_code=source,
+            strategy_name="always_buy",
+            parameters={},
+        )
+        assert output.result.total_trades >= 1
 
 
 class TestBacktestConfig:

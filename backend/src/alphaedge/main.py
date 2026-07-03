@@ -31,6 +31,7 @@ from alphaedge.modules.organization.presentation.router import organizations_rou
 from alphaedge.modules.payments.presentation.router import payments_router
 from alphaedge.modules.portfolio.presentation.router import portfolios_router
 from alphaedge.modules.risk.presentation.router import risk_router
+from alphaedge.modules.strategy.presentation.deployments_router import deployments_router
 from alphaedge.modules.strategy.presentation.router import (
     indicators_router,
     strategies_router,
@@ -188,6 +189,7 @@ def register_routes(app: FastAPI) -> None:
     api_v1.include_router(instruments_router)
     api_v1.include_router(market_data_router)
     api_v1.include_router(strategies_router)
+    api_v1.include_router(deployments_router)
     api_v1.include_router(indicators_router)
     api_v1.include_router(backtest_router)
     api_v1.include_router(optimization_router)

@@ -26,6 +26,38 @@ signals:
     then: SELL
 `
 
+const RSI_TEMPLATE = `name: rsi-mean-reversion
+parameters:
+  rsi_period: 14
+  oversold: 30
+  overbought: 70
+signals:
+  - when: rsi(rsi_period) < oversold
+    then: BUY
+    stop_loss_pct: 3
+  - when: rsi(rsi_period) > overbought
+    then: SELL
+`
+
+const PYTHON_TEMPLATE = `from alphaedge.modules.strategy.domain import StrategyBase, Signal, SignalAction
+
+class MyStrategy(StrategyBase):
+    def on_init(self, context):
+        self.fast = context.indicator("sma", "fast_period")
+        self.slow = context.indicator("sma", "slow_period")
+
+    def on_bar(self, bar, context):
+        fast = self.fast.update(bar.close)
+        slow = self.slow.update(bar.close)
+        if fast is None or slow is None:
+            return None
+        if fast > slow:
+            return Signal(action=SignalAction.BUY, reason="fast above slow")
+        if fast < slow:
+            return Signal(action=SignalAction.SELL, reason="fast below slow")
+        return None
+`
+
 export default function StrategiesPage() {
   const qc = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
@@ -47,7 +79,7 @@ export default function StrategiesPage() {
           name,
           strategy_type: type,
           description: description || null,
-          source_code: type === 'dsl' ? DSL_TEMPLATE : null,
+          source_code: type === 'dsl' ? DSL_TEMPLATE : PYTHON_TEMPLATE,
         },
       }),
     onSuccess: () => {

@@ -3,7 +3,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from alphaedge.modules.market_data.domain.entities import Bar
-from alphaedge.modules.strategy.domain.dsl import INDICATOR_CALL
+from alphaedge.modules.strategy.domain.dsl import INDICATOR_CALL, CompiledCondition
 from alphaedge.modules.strategy.domain.indicators import (
     Indicator,
     create_indicator,
@@ -24,6 +24,14 @@ def _resolve_param(arg: str, parameters: dict[str, object]) -> dict[str, object]
 
 def _indicator_key(name: str, arg: str) -> str:
     return f"{name.lower()}_{arg}"
+
+
+def _is_numeric_literal(value: str) -> bool:
+    try:
+        Decimal(value)
+        return True
+    except Exception:
+        return False
 
 
 @dataclass
@@ -62,6 +70,15 @@ class InstrumentIndicatorState:
         self.prev_values[key] = self.current_values.get(key)
         self.current_values[key] = indicator.update(close)
 
+    def resolve_operand(self, operand: str, parameters: dict[str, object]) -> Decimal | None:
+        operand = operand.strip()
+        if _is_numeric_literal(operand):
+            return Decimal(operand)
+        if operand in parameters:
+            return Decimal(str(parameters[operand]))
+        _, key = self.get_indicator(operand, parameters)
+        return self.current_values.get(key)
+
 
 class DSLStrategyExecutor:
     """Runtime executor for validated DSL strategies during backtesting."""
@@ -70,35 +87,87 @@ class DSLStrategyExecutor:
         self._compiled = compiled
         self._states: dict[UUID, InstrumentIndicatorState] = {}
 
+    def _collect_indicator_refs(self, cond: CompiledCondition, refs: set[str]) -> None:
+        if cond.kind in ("crossover", "crossunder"):
+            refs.add(cond.left)
+            refs.add(cond.right)
+        elif cond.kind == "compare":
+            if INDICATOR_CALL.match(cond.operand_left.strip()):
+                refs.add(cond.operand_left.strip())
+            if INDICATOR_CALL.match(cond.operand_right.strip()):
+                refs.add(cond.operand_right.strip())
+        else:
+            for child in cond.children:
+                self._collect_indicator_refs(child, refs)
+
+    def _evaluate(self, cond: CompiledCondition, state: InstrumentIndicatorState) -> bool:
+        params = self._compiled.parameters
+        if cond.kind == "crossover":
+            _, left_key = state.get_indicator(cond.left, params)
+            _, right_key = state.get_indicator(cond.right, params)
+            left_val = state.current_values.get(left_key)
+            right_val = state.current_values.get(right_key)
+            if left_val is None or right_val is None:
+                return False
+            return crossover(
+                state.prev_values.get(left_key),
+                state.prev_values.get(right_key),
+                left_val,
+                right_val,
+            )
+        if cond.kind == "crossunder":
+            _, left_key = state.get_indicator(cond.left, params)
+            _, right_key = state.get_indicator(cond.right, params)
+            left_val = state.current_values.get(left_key)
+            right_val = state.current_values.get(right_key)
+            if left_val is None or right_val is None:
+                return False
+            return crossunder(
+                state.prev_values.get(left_key),
+                state.prev_values.get(right_key),
+                left_val,
+                right_val,
+            )
+        if cond.kind == "compare":
+            left_val = state.resolve_operand(cond.operand_left, params)
+            right_val = state.resolve_operand(cond.operand_right, params)
+            if left_val is None or right_val is None:
+                return False
+            if cond.operator == "lt":
+                return left_val < right_val
+            if cond.operator == "gt":
+                return left_val > right_val
+            if cond.operator == "lte":
+                return left_val <= right_val
+            if cond.operator == "gte":
+                return left_val >= right_val
+            if cond.operator == "eq":
+                return left_val == right_val
+            return False
+        if cond.kind == "all":
+            return all(self._evaluate(child, state) for child in cond.children)
+        if cond.kind == "any":
+            return any(self._evaluate(child, state) for child in cond.children)
+        return False
+
     def on_bar(self, bar: Bar) -> Signal | None:
         state = self._states.setdefault(bar.instrument_id, InstrumentIndicatorState())
         close = bar.close
 
         refs: set[str] = set()
         for rule in self._compiled.signals:
-            refs.add(rule.left)
-            refs.add(rule.right)
+            self._collect_indicator_refs(rule.condition_root, refs)
         for ref in refs:
             state.update_all(ref, self._compiled.parameters, close)
 
         for rule in self._compiled.signals:
-            _, left_key = state.get_indicator(rule.left, self._compiled.parameters)
-            _, right_key = state.get_indicator(rule.right, self._compiled.parameters)
-            left_val = state.current_values.get(left_key)
-            right_val = state.current_values.get(right_key)
-            if left_val is None or right_val is None:
-                continue
-
-            prev_left = state.prev_values.get(left_key)
-            prev_right = state.prev_values.get(right_key)
-
-            triggered = False
-            if rule.condition_fn == "crossover":
-                triggered = crossover(prev_left, prev_right, left_val, right_val)
-            elif rule.condition_fn == "crossunder":
-                triggered = crossunder(prev_left, prev_right, left_val, right_val)
-
-            if triggered:
-                return Signal(action=rule.action, reason=rule.condition)
+            if self._evaluate(rule.condition_root, state):
+                return Signal(
+                    action=rule.action,
+                    reason=rule.condition,
+                    strength=rule.strength,
+                    stop_loss_pct=rule.stop_loss_pct,
+                    take_profit_pct=rule.take_profit_pct,
+                )
 
         return None

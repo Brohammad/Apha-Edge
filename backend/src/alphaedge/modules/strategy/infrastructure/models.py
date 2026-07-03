@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import DateTime, func, select
@@ -10,9 +11,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 from alphaedge.modules.strategy.domain.enums import StrategyType, VersionStatus
 from alphaedge.modules.strategy.domain.repositories import (
     IndicatorRepository,
+    StrategyDeploymentRepository,
     StrategyRepository,
     StrategyVersionRepository,
 )
+from alphaedge.modules.strategy.domain.deployment import StrategyDeployment
 from alphaedge.modules.strategy.domain.value_objects import (
     IndicatorDefinition,
     Strategy,
@@ -58,6 +61,20 @@ class IndicatorModel(Base, UUIDPrimaryKeyMixin):
     implementation: Mapped[str] = mapped_column(default="python")
 
 
+class StrategyDeploymentModel(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "strategy_deployments"
+
+    user_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False, index=True)
+    strategy_version_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False, index=True)
+    portfolio_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    broker_connection_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    instrument_ids: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    quantity: Mapped[Decimal] = mapped_column(nullable=False)
+    is_active: Mapped[bool] = mapped_column(default=True)
+    last_signal_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_signal_action: Mapped[str | None] = mapped_column(nullable=True)
+
+
 def _strategy_to_entity(model: StrategyModel) -> Strategy:
     return Strategy(
         id=model.id,
@@ -92,6 +109,23 @@ def _indicator_to_entity(model: IndicatorModel) -> IndicatorDefinition:
         category=model.category,
         parameters_schema=model.parameters_schema,
         implementation=model.implementation,
+    )
+
+
+def _deployment_to_entity(model: StrategyDeploymentModel) -> StrategyDeployment:
+    return StrategyDeployment(
+        id=model.id,
+        user_id=model.user_id,
+        strategy_version_id=model.strategy_version_id,
+        portfolio_id=model.portfolio_id,
+        broker_connection_id=model.broker_connection_id,
+        instrument_ids=[UUID(i) for i in (model.instrument_ids or [])],
+        quantity=model.quantity,
+        is_active=model.is_active,
+        last_signal_at=model.last_signal_at,
+        last_signal_action=model.last_signal_action,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
     )
 
 
@@ -244,3 +278,62 @@ class SQLAlchemyIndicatorRepository(IndicatorRepository):
         result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
         return _indicator_to_entity(model) if model else None
+
+
+class SQLAlchemyStrategyDeploymentRepository(StrategyDeploymentRepository):
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def save(self, deployment: StrategyDeployment) -> StrategyDeployment:
+        existing = await self._session.get(StrategyDeploymentModel, deployment.id)
+        instrument_ids = [str(i) for i in deployment.instrument_ids]
+        if existing:
+            existing.strategy_version_id = deployment.strategy_version_id
+            existing.portfolio_id = deployment.portfolio_id
+            existing.broker_connection_id = deployment.broker_connection_id
+            existing.instrument_ids = instrument_ids
+            existing.quantity = deployment.quantity
+            existing.is_active = deployment.is_active
+            existing.last_signal_at = deployment.last_signal_at
+            existing.last_signal_action = deployment.last_signal_action
+            existing.updated_at = datetime.now(UTC)
+            model = existing
+        else:
+            model = StrategyDeploymentModel(
+                id=deployment.id,
+                user_id=deployment.user_id,
+                strategy_version_id=deployment.strategy_version_id,
+                portfolio_id=deployment.portfolio_id,
+                broker_connection_id=deployment.broker_connection_id,
+                instrument_ids=instrument_ids,
+                quantity=deployment.quantity,
+                is_active=deployment.is_active,
+                last_signal_at=deployment.last_signal_at,
+                last_signal_action=deployment.last_signal_action,
+            )
+            self._session.add(model)
+        await self._session.flush()
+        return _deployment_to_entity(model)
+
+    async def get_by_id(self, deployment_id: UUID) -> StrategyDeployment | None:
+        model = await self._session.get(StrategyDeploymentModel, deployment_id)
+        return _deployment_to_entity(model) if model else None
+
+    async def list_by_user(self, user_id: UUID) -> list[StrategyDeployment]:
+        stmt = (
+            select(StrategyDeploymentModel)
+            .where(StrategyDeploymentModel.user_id == user_id)
+            .order_by(StrategyDeploymentModel.created_at.desc())
+        )
+        result = await self._session.execute(stmt)
+        return [_deployment_to_entity(m) for m in result.scalars().all()]
+
+    async def list_active_for_instrument(self, instrument_id: UUID) -> list[StrategyDeployment]:
+        iid = str(instrument_id)
+        stmt = select(StrategyDeploymentModel).where(StrategyDeploymentModel.is_active.is_(True))
+        result = await self._session.execute(stmt)
+        deployments = []
+        for model in result.scalars().all():
+            if iid in (model.instrument_ids or []):
+                deployments.append(_deployment_to_entity(model))
+        return deployments

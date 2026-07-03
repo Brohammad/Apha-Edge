@@ -5,6 +5,7 @@ from uuid import UUID
 
 from alphaedge.modules.backtesting.domain.config import BacktestConfig
 from alphaedge.modules.backtesting.domain.dsl_executor import DSLStrategyExecutor
+from alphaedge.modules.backtesting.domain.python_executor import PythonStrategyExecutor
 from alphaedge.modules.backtesting.domain.entities import BacktestTrade
 from alphaedge.modules.backtesting.domain.enums import TradeSide
 from alphaedge.modules.backtesting.domain.fill_simulator import FillSimulator
@@ -13,7 +14,7 @@ from alphaedge.modules.backtesting.domain.position_sizer import PositionSizer
 from alphaedge.modules.market_data.domain.entities import Bar
 from alphaedge.modules.strategy.domain.dsl import StrategyCompiler
 from alphaedge.modules.strategy.domain.enums import SignalAction, StrategyType
-from alphaedge.shared.domain.exceptions import ValidationError
+from alphaedge.modules.strategy.domain.enums import SignalAction, StrategyType
 
 
 @dataclass
@@ -29,6 +30,7 @@ class _Portfolio:
     open_trades: dict[UUID, BacktestTrade] = field(default_factory=dict)
     closed_trades: list[BacktestTrade] = field(default_factory=list)
     equity_curve: list[EquityPoint] = field(default_factory=list)
+    signal_meta: dict[UUID, Signal] = field(default_factory=dict)
 
     def position_qty(self, instrument_id: UUID) -> Decimal:
         return self.positions.get(instrument_id, Decimal("0"))
@@ -43,19 +45,32 @@ class _Portfolio:
 
 
 class StrategyExecutor:
-    """Protocol wrapper for DSL (and future Python) strategy execution."""
+    """Protocol wrapper for DSL and Python strategy execution."""
 
-    def on_bar(self, bar: Bar) -> SignalAction | None:
+    def on_bar(self, bar: Bar) -> Signal | None:
         raise NotImplementedError
+
+    def on_stop(self) -> None:
+        pass
 
 
 class DSLExecutorAdapter(StrategyExecutor):
     def __init__(self, executor: DSLStrategyExecutor) -> None:
         self._executor = executor
 
-    def on_bar(self, bar: Bar) -> SignalAction | None:
-        signal = self._executor.on_bar(bar)
-        return signal.action if signal else None
+    def on_bar(self, bar: Bar) -> Signal | None:
+        return self._executor.on_bar(bar)
+
+
+class PythonExecutorAdapter(StrategyExecutor):
+    def __init__(self, executor: PythonStrategyExecutor) -> None:
+        self._executor = executor
+
+    def on_bar(self, bar: Bar) -> Signal | None:
+        return self._executor.on_bar(bar)
+
+    def on_stop(self) -> None:
+        self._executor.on_stop()
 
 
 class BacktestEngine:
@@ -78,7 +93,7 @@ class BacktestEngine:
         strategy_name: str,
         parameters: dict[str, object],
     ) -> BacktestOutput:
-        if strategy_type == StrategyType.DSL and self._should_use_cpp():
+        if strategy_type == StrategyType.DSL and self._should_use_cpp(source_code, strategy_name, parameters):
             from alphaedge.modules.backtesting.domain.cpp_bridge import run_cpp_backtest
 
             compiled, _ = StrategyCompiler.validate_and_compile(
@@ -93,10 +108,13 @@ class BacktestEngine:
 
         for bar in events:
             latest_prices[bar.instrument_id] = bar.close
+            self._check_risk_exits(portfolio, bar)
             signal = executor.on_bar(bar)
             if signal:
                 self._execute_signal(portfolio, bar, signal)
             portfolio.mark_equity(bar.timestamp, latest_prices)
+
+        executor.on_stop()
 
         closed = portfolio.closed_trades
         if portfolio.open_trades:
@@ -116,9 +134,19 @@ class BacktestEngine:
         return BacktestOutput(result=result, trades=closed)
 
     @staticmethod
-    def _should_use_cpp() -> bool:
+    def _should_use_cpp(
+        source_code: str,
+        strategy_name: str,
+        parameters: dict[str, object],
+    ) -> bool:
         from alphaedge.config import settings
         from alphaedge.modules.backtesting.domain.cpp_bridge import cpp_available
+
+        compiled, _ = StrategyCompiler.validate_and_compile(
+            StrategyType.DSL, source_code, strategy_name, parameters
+        )
+        if compiled.uses_advanced_dsl():
+            return False
 
         mode = settings.cpp_engine
         if mode == "off":
@@ -144,9 +172,7 @@ class BacktestEngine:
                 StrategyType.DSL, source_code, strategy_name, parameters
             )
             return DSLExecutorAdapter(DSLStrategyExecutor(compiled))
-        raise ValidationError(
-            "Python strategy backtesting is not yet supported; use DSL strategies"
-        )
+        return PythonExecutorAdapter(PythonStrategyExecutor(source_code, parameters))
 
     @staticmethod
     def _merge_events(bars_by_instrument: dict[UUID, list[Bar]]) -> list[Bar]:
@@ -156,23 +182,44 @@ class BacktestEngine:
         events.sort(key=lambda b: b.timestamp)
         return events
 
-    def _execute_signal(self, portfolio: _Portfolio, bar: Bar, signal: SignalAction) -> None:
+    def _check_risk_exits(self, portfolio: _Portfolio, bar: Bar) -> None:
+        iid = bar.instrument_id
+        meta = portfolio.signal_meta.get(iid)
+        trade = portfolio.open_trades.get(iid)
+        if not meta or not trade or portfolio.position_qty(iid) <= 0:
+            return
+        price = bar.close
+        entry = trade.entry_price
+        if entry <= 0:
+            return
+        change_pct = float((price - entry) / entry * 100)
+        if meta.stop_loss_pct is not None and change_pct <= -meta.stop_loss_pct:
+            self._close_position(portfolio, iid, price, bar.timestamp)
+            portfolio.signal_meta.pop(iid, None)
+            return
+        if meta.take_profit_pct is not None and change_pct >= meta.take_profit_pct:
+            self._close_position(portfolio, iid, price, bar.timestamp)
+            portfolio.signal_meta.pop(iid, None)
+
+    def _execute_signal(self, portfolio: _Portfolio, bar: Bar, signal: Signal) -> None:
         iid = bar.instrument_id
         price = bar.close
         equity = portfolio.equity if portfolio.equity_curve else portfolio.cash
         pos = portfolio.position_qty(iid)
+        action = signal.action
 
-        if signal == SignalAction.BUY and pos > 0:
+        if action == SignalAction.BUY and pos > 0:
             return
-        if signal == SignalAction.SELL and pos <= 0:
+        if action == SignalAction.SELL and pos <= 0:
             return
 
-        if signal == SignalAction.SELL:
+        if action == SignalAction.SELL:
             self._close_position(portfolio, iid, price, bar.timestamp)
+            portfolio.signal_meta.pop(iid, None)
             return
 
         qty = PositionSizer.compute_quantity(
-            signal, price, equity, portfolio.cash, pos, self._config
+            action, price, equity, portfolio.cash, pos, self._config
         )
         fill = FillSimulator.simulate(TradeSide.BUY, qty, price, self._config)
         if not fill:
@@ -192,6 +239,8 @@ class BacktestEngine:
             fill.slippage_amount,
         )
         portfolio.open_trades[iid] = trade
+        if signal.stop_loss_pct is not None or signal.take_profit_pct is not None:
+            portfolio.signal_meta[iid] = signal
 
     def _close_position(
         self,

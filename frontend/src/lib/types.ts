@@ -109,6 +109,21 @@ export interface Indicator {
   implementation: string
 }
 
+export interface StrategyDeployment {
+  id: string
+  user_id: string
+  strategy_version_id: string
+  portfolio_id: string
+  broker_connection_id: string
+  instrument_ids: string[]
+  quantity: string
+  is_active: boolean
+  last_signal_at: string | null
+  last_signal_action: string | null
+  created_at: string
+  updated_at: string
+}
+
 // -- Backtesting ----------------------------------------------------------
 
 export type BacktestStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'

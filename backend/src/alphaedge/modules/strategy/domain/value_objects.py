@@ -11,6 +11,9 @@ from alphaedge.shared.domain.exceptions import ValidationError
 class Signal:
     action: SignalAction
     reason: str = ""
+    strength: float | None = None
+    stop_loss_pct: float | None = None
+    take_profit_pct: float | None = None
 
 
 @dataclass
@@ -28,6 +31,18 @@ class StrategyContext:
     indicators: dict[str, object] = field(default_factory=dict)
     position: Decimal = Decimal("0")
     cash: Decimal = Decimal("0")
+
+    def indicator(self, name: str, period: int | str) -> object:
+        """Return a stateful indicator instance keyed by name and period."""
+        if isinstance(period, str):
+            raw = self.parameters.get(period, period)
+            period = int(raw)  # type: ignore[arg-type]
+        key = f"{name.lower()}_{period}"
+        if key not in self.indicators:
+            from alphaedge.modules.strategy.domain.indicators import create_indicator
+
+            self.indicators[key] = create_indicator(name, {"period": period})
+        return self.indicators[key]
 
 
 @dataclass
