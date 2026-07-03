@@ -438,8 +438,9 @@ Copy `.env.example` to `.env` in the repo root. Key variables:
 | `REDIS_URL` | Redis connection | `redis://localhost:6379/0` |
 | `JWT_SECRET_KEY` | Token signing | change-me |
 | `CORS_ORIGINS` | Allowed frontend origins | `["http://localhost:5173"]` |
-| `ALPHA_VANTAGE_API_KEY` | Live quotes & ingestion | empty |
-| `POLYGON_API_KEY` | Polygon market data | empty |
+| `ALPHA_VANTAGE_API_KEY` | Live quotes fallback (25 req/day free) | empty |
+| `POLYGON_API_KEY` | **Preferred** ticker quotes (daily close on free tier) | empty |
+| `QUOTE_PROVIDER` | `auto` (Polygon then AV), `polygon`, or `alpha_vantage` | `auto` |
 | `GOOGLE_OAUTH_CLIENT_ID/SECRET` | Google login | empty |
 | `GITHUB_OAUTH_CLIENT_ID/SECRET` | GitHub login | empty |
 | `OAUTH_REDIRECT_BASE_URL` | Backend OAuth callback base | `http://localhost:8000/api/v1/auth/oauth` |
@@ -463,7 +464,7 @@ Copy `.env.example` to `.env` in the repo root. Key variables:
 | OAuth redirects back to login | Ensure OAuth callback URLs match exactly; restart API after `.env` changes |
 | Google "Access blocked" | Add your email as a test user in Google Cloud Console |
 | GitHub `redirect_uri_mismatch` | Callback must be `http://localhost:8000/api/v1/auth/oauth/github/callback` |
-| Stale AAPL price on home page | Free Alpha Vantage is **25 requests/day** — quota may be exhausted; ticker shows ⏱ and a banner. Wait for reset or upgrade. Cached live quotes refresh every 15 min. |
+| Stale AAPL price on home page | Set `POLYGON_API_KEY` (preferred) or `ALPHA_VANTAGE_API_KEY`; free AV is 25 req/day. ⏱ = DB fallback. |
 | AI insight echoes the prompt / looks like a template | Old report — request a new insight; restart API so dev runs updated code in-process |
 | AI insight fails / "OPENAI_API_KEY is required" | Set `OPENAI_API_KEY` in `.env` and restart API; or use `LLM_PROVIDER=mock` for offline mode |
 | `429 Rate limit exceeded` during tests | Start API with `RATE_LIMIT_ENABLED=false` |

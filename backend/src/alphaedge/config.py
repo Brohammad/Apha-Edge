@@ -47,6 +47,7 @@ class Settings(BaseSettings):
 
     alpha_vantage_api_key: str = ""
     polygon_api_key: str = ""
+    quote_provider: Literal["auto", "polygon", "alpha_vantage"] = "auto"
 
     # C++ backtest engine: "auto" uses it when installed, "off" forces the
     # Python path, "require" fails if the extension is missing.

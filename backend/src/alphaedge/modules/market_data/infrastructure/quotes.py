@@ -1,10 +1,11 @@
-"""Live quote lookup with provider + database fallback."""
+"""Live quote lookup with provider chain + database fallback."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import Protocol
 
 import httpx
 
@@ -13,7 +14,8 @@ from alphaedge.modules.market_data.domain.enums import Timeframe
 from alphaedge.modules.market_data.domain.repositories import BarRepository, InstrumentRepository
 from alphaedge.shared.domain.exceptions import ValidationError
 
-QUOTE_CACHE_TTL = 900  # 15 min — free Alpha Vantage tier allows only 25 requests/day
+QUOTE_CACHE_TTL = 900  # 15 min
+LIVE_QUOTE_SOURCES = frozenset({"polygon", "alpha_vantage"})
 
 
 @dataclass(frozen=True)
@@ -24,6 +26,62 @@ class QuoteSnapshot:
     as_of: datetime
     source: str
     fallback_reason: str | None = None
+
+
+class QuoteClient(Protocol):
+    async def fetch(self, symbol: str) -> QuoteSnapshot: ...
+
+
+class PolygonQuoteClient:
+    """Uses Polygon daily aggregates (free tier — previous close, not real-time snapshot)."""
+
+    BASE_URL = "https://api.polygon.io"
+
+    async def fetch(self, symbol: str) -> QuoteSnapshot:
+        if not settings.polygon_api_key:
+            raise ValidationError("POLYGON_API_KEY is not configured")
+
+        sym = symbol.upper()
+        end = datetime.now(UTC).date()
+        start = end - timedelta(days=14)
+        url = f"{self.BASE_URL}/v2/aggs/ticker/{sym}/range/1/day/{start}/{end}"
+        params = {
+            "adjusted": "true",
+            "sort": "desc",
+            "limit": 2,
+            "apiKey": settings.polygon_api_key,
+        }
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(url, params=params)
+            response.raise_for_status()
+            payload = response.json()
+
+        status = payload.get("status")
+        if status not in (None, "OK", "DELAYED"):
+            raise ValidationError(
+                str(payload.get("message", payload.get("error", "Polygon API error")))
+            )
+
+        results = payload.get("results") or []
+        if not results:
+            raise ValidationError(f"No Polygon quote data for {sym}")
+
+        latest = results[0]
+        price = Decimal(str(latest["c"]))
+        as_of = datetime.fromtimestamp(latest["t"] / 1000, tz=UTC)
+        change_pct = None
+        if len(results) > 1:
+            prev_close = Decimal(str(results[1]["c"]))
+            if prev_close != 0:
+                change_pct = (price - prev_close) / prev_close * Decimal("100")
+
+        return QuoteSnapshot(
+            symbol=sym,
+            price=price,
+            change_pct=change_pct,
+            as_of=as_of,
+            source="polygon",
+        )
 
 
 class AlphaVantageQuoteClient:
@@ -102,6 +160,25 @@ class QuoteCache:
         await self._redis.set(self._key(quote.symbol), json.dumps(payload), ex=QUOTE_CACHE_TTL)
 
 
+def _quote_clients() -> list[QuoteClient]:
+    provider = settings.quote_provider
+    polygon = PolygonQuoteClient()
+    alpha_vantage = AlphaVantageQuoteClient()
+
+    if provider == "polygon":
+        return [polygon]
+    if provider == "alpha_vantage":
+        return [alpha_vantage]
+
+    # auto: prefer Polygon (higher free limits), then Alpha Vantage
+    clients: list[QuoteClient] = []
+    if settings.polygon_api_key:
+        clients.append(polygon)
+    if settings.alpha_vantage_api_key:
+        clients.append(alpha_vantage)
+    return clients
+
+
 class QuoteService:
     def __init__(
         self,
@@ -112,7 +189,6 @@ class QuoteService:
         self._instrument_repo = instrument_repo
         self._bar_repo = bar_repo
         self._cache = cache
-        self._live_client = AlphaVantageQuoteClient()
 
     async def get_quotes(self, symbols: list[str]) -> list[QuoteSnapshot]:
         results: list[QuoteSnapshot] = []
@@ -131,26 +207,31 @@ class QuoteService:
         sym = symbol.upper()
         if self._cache:
             cached = await self._cache.get(sym)
-            if cached and cached.source == "alpha_vantage":
+            if cached and cached.source in LIVE_QUOTE_SOURCES and not cached.fallback_reason:
                 return cached
 
-        try:
-            quote = await self._live_client.fetch(sym)
-            if self._cache:
-                await self._cache.set(quote)
-            return quote
-        except ValidationError as exc:
-            db_quote = await self._from_database(sym)
-            if db_quote:
-                return QuoteSnapshot(
-                    symbol=db_quote.symbol,
-                    price=db_quote.price,
-                    change_pct=db_quote.change_pct,
-                    as_of=db_quote.as_of,
-                    source="database",
-                    fallback_reason=str(exc),
-                )
-            return None
+        errors: list[str] = []
+        for client in _quote_clients():
+            try:
+                quote = await client.fetch(sym)
+                if self._cache:
+                    await self._cache.set(quote)
+                return quote
+            except ValidationError as exc:
+                errors.append(str(exc))
+
+        db_quote = await self._from_database(sym)
+        if db_quote:
+            reason = "; ".join(errors) if errors else "No live quote provider configured"
+            return QuoteSnapshot(
+                symbol=db_quote.symbol,
+                price=db_quote.price,
+                change_pct=db_quote.change_pct,
+                as_of=db_quote.as_of,
+                source="database",
+                fallback_reason=reason,
+            )
+        return None
 
     async def _from_database(self, symbol: str) -> QuoteSnapshot | None:
         instrument = await self._instrument_repo.get_by_symbol(symbol)

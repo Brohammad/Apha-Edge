@@ -37,6 +37,7 @@ interface TapeEntry {
   close: number
   changePct: number | null
   live: boolean
+  source: string
   asOf: string | null
   fallbackReason: string | null
 }
@@ -64,7 +65,8 @@ function useTapeQuotes() {
           symbol: q.symbol,
           close: Number(q.price),
           changePct: q.change_pct !== null ? Number(q.change_pct) : null,
-          live: q.source === 'alpha_vantage',
+          live: q.source === 'alpha_vantage' || q.source === 'polygon',
+          source: q.source,
           asOf: q.as_of,
           fallbackReason: q.fallback_reason ?? null,
         })
@@ -91,7 +93,14 @@ function TapeItem({ entry }: { entry: TapeEntry }) {
       <span className="font-semibold text-ink-100">
         {entry.symbol}
         {entry.live ? (
-          <span className="ml-1 text-bull-500" title="Live quote (Alpha Vantage)">
+          <span
+            className="ml-1 text-bull-500"
+            title={
+              entry.source === 'polygon'
+                ? 'Polygon — latest daily close'
+                : 'Alpha Vantage — live quote'
+            }
+          >
             ●
           </span>
         ) : (
