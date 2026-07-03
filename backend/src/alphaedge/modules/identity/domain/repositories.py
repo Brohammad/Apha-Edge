@@ -1,7 +1,13 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
 
-from alphaedge.modules.identity.domain.entities import RefreshToken, Role, User
+from alphaedge.modules.identity.domain.entities import (
+    ApiKey,
+    OAuthAccount,
+    RefreshToken,
+    Role,
+    User,
+)
 
 
 class UserRepository(ABC):
@@ -38,3 +44,30 @@ class RefreshTokenRepository(ABC):
 
     @abstractmethod
     async def revoke_all_for_user(self, user_id: UUID) -> None: ...
+
+
+class OAuthAccountRepository(ABC):
+    @abstractmethod
+    async def get_by_provider_uid(
+        self, provider: str, provider_uid: str
+    ) -> OAuthAccount | None: ...
+
+    @abstractmethod
+    async def save(self, account: OAuthAccount) -> OAuthAccount: ...
+
+
+class ApiKeyRepository(ABC):
+    @abstractmethod
+    async def save(self, api_key: ApiKey) -> ApiKey: ...
+
+    @abstractmethod
+    async def get_by_hash(self, key_hash: str) -> ApiKey | None: ...
+
+    @abstractmethod
+    async def list_by_user_id(self, user_id: UUID) -> list[ApiKey]: ...
+
+    @abstractmethod
+    async def revoke(self, key_id: UUID) -> None: ...
+
+    @abstractmethod
+    async def touch_last_used(self, key_id: UUID) -> None: ...

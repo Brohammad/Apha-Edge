@@ -23,6 +23,7 @@ from alphaedge.modules.market_data.presentation.router import (
     instruments_router,
     market_data_router,
 )
+from alphaedge.modules.market_data.presentation.ws import ws_router
 from alphaedge.modules.optimization.presentation.router import optimization_router
 from alphaedge.modules.portfolio.presentation.router import portfolios_router
 from alphaedge.modules.risk.presentation.router import risk_router
@@ -34,6 +35,8 @@ from alphaedge.shared.domain.exceptions import DomainException
 from alphaedge.shared.infrastructure.database import engine
 from alphaedge.shared.infrastructure.logging import setup_logging
 from alphaedge.shared.infrastructure.redis import check_redis_health, close_redis
+from alphaedge.shared.presentation.auth_context_middleware import auth_context_middleware
+from alphaedge.shared.presentation.rate_limit_middleware import rate_limit_middleware
 
 REQUEST_COUNT = Counter(
     "http_requests_total",
@@ -89,6 +92,9 @@ def create_app() -> FastAPI:
         response.headers["X-Request-ID"] = request_id
         return response
 
+    app.middleware("http")(auth_context_middleware)
+    app.middleware("http")(rate_limit_middleware)
+
     register_exception_handlers(app)
     register_routes(app)
 
@@ -133,6 +139,7 @@ def _domain_error_status(exc: DomainException) -> int:
         "VALIDATION_ERROR": status.HTTP_422_UNPROCESSABLE_ENTITY,
         "AUTHENTICATION_ERROR": status.HTTP_401_UNAUTHORIZED,
         "AUTHORIZATION_ERROR": status.HTTP_403_FORBIDDEN,
+        "RATE_LIMIT_EXCEEDED": status.HTTP_429_TOO_MANY_REQUESTS,
     }
     return mapping.get(exc.code, status.HTTP_400_BAD_REQUEST)
 
@@ -152,6 +159,7 @@ def register_routes(app: FastAPI) -> None:
     api_v1.include_router(insights_router)
     api_v1.include_router(portfolios_router)
     api_v1.include_router(risk_router)
+    api_v1.include_router(ws_router)
 
     @api_v1.get("/health/live", tags=["Health"])
     async def liveness():

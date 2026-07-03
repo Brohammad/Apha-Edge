@@ -13,6 +13,18 @@ class RoleName(StrEnum):
     API_SERVICE = "api_service"
 
 
+class OAuthProvider(StrEnum):
+    GOOGLE = "google"
+    GITHUB = "github"
+
+
+class RateLimitTier(StrEnum):
+    FREE = "free"
+    STANDARD = "standard"
+    PRO = "pro"
+    UNLIMITED = "unlimited"
+
+
 @dataclass
 class Role:
     id: UUID
@@ -24,15 +36,16 @@ class Role:
 class User:
     id: UUID
     email: str
-    password_hash: str
+    password_hash: str | None
     display_name: str
     is_active: bool = True
+    rate_limit_tier: RateLimitTier = RateLimitTier.STANDARD
     roles: list[Role] = field(default_factory=list)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @staticmethod
-    def create(email: str, password_hash: str, display_name: str) -> "User":
+    def create(email: str, password_hash: str | None, display_name: str) -> "User":
         if not email or "@" not in email:
             raise ValidationError("Invalid email address")
         if not display_name.strip():
@@ -91,3 +104,36 @@ class RefreshToken:
         if self.revoked_at is not None:
             return False
         return datetime.now(UTC) < self.expires_at
+
+
+@dataclass
+class OAuthAccount:
+    id: UUID
+    user_id: UUID
+    provider: OAuthProvider
+    provider_uid: str
+    email: str | None = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+@dataclass
+class ApiKey:
+    id: UUID
+    user_id: UUID
+    name: str
+    key_hash: str
+    prefix: str
+    scopes: list[str]
+    rate_limit_tier: RateLimitTier
+    expires_at: datetime | None = None
+    last_used_at: datetime | None = None
+    revoked_at: datetime | None = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+    @property
+    def is_valid(self) -> bool:
+        if self.revoked_at is not None:
+            return False
+        return not (self.expires_at is not None and datetime.now(UTC) >= self.expires_at)

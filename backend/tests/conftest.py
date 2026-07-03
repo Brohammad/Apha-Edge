@@ -20,6 +20,8 @@ REQUIRED_TABLES = (
     "strategy_versions",
     "backtest_runs",
     "optimization_runs",
+    "oauth_accounts",
+    "api_keys",
     "broker_connections",
     "orders",
     "insight_requests",
@@ -32,6 +34,14 @@ async def _test_lifespan(_app: object):
     """Test lifespan: skip engine/redis teardown on each HTTP client exit."""
     setup_logging()
     yield
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _disable_rate_limit_for_tests() -> None:
+    """Integration tests share one ASGI client IP; disable app rate limits in pytest."""
+    from alphaedge.config import settings
+
+    settings.rate_limit_enabled = False
 
 
 @pytest.fixture(scope="session", autouse=True)

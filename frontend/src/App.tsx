@@ -15,6 +15,7 @@ import PortfolioDetailPage from './pages/PortfolioDetailPage'
 import OrdersPage from './pages/OrdersPage'
 import InsightsPage from './pages/InsightsPage'
 import InsightDetailPage from './pages/InsightDetailPage'
+import OAuthCallbackPage from './pages/OAuthCallbackPage'
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -34,6 +35,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
       <Route
         element={
           <Protected>

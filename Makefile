@@ -53,5 +53,5 @@ frontend-dev:
 frontend-build:
 	cd frontend && npm run build
 
-frontend-lint:
-	cd frontend && npm run lint
+load-test:
+	cd backend && python scripts/load_test.py --base-url http://localhost:8000

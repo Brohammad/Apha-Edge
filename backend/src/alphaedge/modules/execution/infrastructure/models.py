@@ -28,6 +28,7 @@ from alphaedge.modules.execution.domain.repositories import (
     OrderEventRepository,
     OrderRepository,
 )
+from alphaedge.modules.execution.infrastructure.alpaca_broker import AlpacaBroker
 from alphaedge.shared.domain.value_objects import Side
 from alphaedge.shared.infrastructure.database import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
@@ -144,6 +145,8 @@ def _event_to_entity(m: OrderEventModel) -> OrderEvent:
 def get_broker(connection: BrokerConnection) -> BrokerPort:
     if connection.broker_name == BrokerName.PAPER:
         return PaperBroker()
+    if connection.broker_name == BrokerName.ALPACA:
+        return AlpacaBroker.from_credentials(connection.credentials, connection.is_paper)
     raise ValueError(f"Unsupported broker: {connection.broker_name.value}")
 
 

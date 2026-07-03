@@ -142,9 +142,7 @@ class SQLAlchemyInsightReportRepository(InsightReportRepository):
         return _report_to_entity(model)
 
     async def get_by_request_id(self, request_id: UUID) -> InsightReport | None:
-        stmt = select(InsightReportModel).where(
-            InsightReportModel.insight_request_id == request_id
-        )
+        stmt = select(InsightReportModel).where(InsightReportModel.insight_request_id == request_id)
         result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
         return _report_to_entity(model) if model else None

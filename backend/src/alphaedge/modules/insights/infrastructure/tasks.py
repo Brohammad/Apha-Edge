@@ -8,5 +8,5 @@ def generate_insight_task(self, request_id: str) -> None:
     try:
         run_insight_sync(request_id)
     except Exception as exc:
-        countdown = min(60, 2 ** self.request.retries * 10)
+        countdown = min(60, 2**self.request.retries * 10)
         raise self.retry(exc=exc, countdown=countdown) from exc

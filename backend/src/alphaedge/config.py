@@ -46,5 +46,26 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     llm_provider: Literal["mock", "openai"] = "mock"
 
+    # OAuth (Google, GitHub)
+    google_oauth_client_id: str = ""
+    google_oauth_client_secret: str = ""
+    github_oauth_client_id: str = ""
+    github_oauth_client_secret: str = ""
+    oauth_redirect_base_url: str = "http://localhost:8000/api/v1/auth/oauth"
+    oauth_frontend_callback_url: str = "http://localhost:5173/oauth/callback"
+
+    # Alpaca broker
+    alpaca_api_key: str = ""
+    alpaca_api_secret: str = ""
+    alpaca_paper_base_url: str = "https://paper-api.alpaca.markets"
+    alpaca_live_base_url: str = "https://api.alpaca.markets"
+
+    # Rate limiting (Redis sliding window)
+    rate_limit_enabled: bool = True
+
+    @property
+    def is_testing(self) -> bool:
+        return self.app_env in ("test", "testing")
+
 
 settings = Settings()

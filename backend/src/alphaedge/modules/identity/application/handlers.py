@@ -3,17 +3,24 @@ from uuid import uuid4
 
 from alphaedge.config import settings
 from alphaedge.modules.identity.application.commands import (
+    ApiKeyDTO,
+    CreateApiKeyCommand,
+    CreateApiKeyResult,
     GetCurrentUserQuery,
+    ListApiKeysQuery,
     LoginUserCommand,
     LogoutUserCommand,
     RefreshTokenCommand,
     RegisterUserCommand,
+    RevokeApiKeyCommand,
     TokenPair,
     UserDTO,
 )
+from alphaedge.modules.identity.application.oauth_service import ApiKeyService
 from alphaedge.modules.identity.application.services import PasswordService, TokenService
 from alphaedge.modules.identity.domain.entities import RefreshToken, User
 from alphaedge.modules.identity.domain.repositories import (
+    ApiKeyRepository,
     RefreshTokenRepository,
     RoleRepository,
     UserRepository,
@@ -59,7 +66,9 @@ class LoginUserHandler:
 
     async def handle(self, command: LoginUserCommand) -> TokenPair:
         user = await self._user_repo.get_by_email(command.email)
-        if not user or not PasswordService.verify(command.password, user.password_hash):
+        if not user or not user.password_hash:
+            raise AuthenticationError("Invalid email or password")
+        if not PasswordService.verify(command.password, user.password_hash):
             raise AuthenticationError("Invalid email or password")
 
         if not user.is_active:
@@ -131,3 +140,35 @@ class GetCurrentUserHandler:
         if not user:
             raise NotFoundError("User", str(query.user_id))
         return UserDTO.from_entity(user)
+
+
+class CreateApiKeyHandler:
+    def __init__(self, api_key_repo: ApiKeyRepository) -> None:
+        self._api_key_repo = api_key_repo
+
+    async def handle(self, command: CreateApiKeyCommand) -> CreateApiKeyResult:
+        raw, entity = ApiKeyService.generate(
+            command.name, command.user_id, command.scopes, command.rate_limit_tier
+        )
+        saved = await self._api_key_repo.save(entity)
+        return CreateApiKeyResult(api_key=ApiKeyDTO.from_entity(saved), raw_key=raw)
+
+
+class ListApiKeysHandler:
+    def __init__(self, api_key_repo: ApiKeyRepository) -> None:
+        self._api_key_repo = api_key_repo
+
+    async def handle(self, query: ListApiKeysQuery) -> list[ApiKeyDTO]:
+        keys = await self._api_key_repo.list_by_user_id(query.user_id)
+        return [ApiKeyDTO.from_entity(k) for k in keys]
+
+
+class RevokeApiKeyHandler:
+    def __init__(self, api_key_repo: ApiKeyRepository) -> None:
+        self._api_key_repo = api_key_repo
+
+    async def handle(self, command: RevokeApiKeyCommand) -> None:
+        keys = await self._api_key_repo.list_by_user_id(command.user_id)
+        if not any(k.id == command.key_id for k in keys):
+            raise NotFoundError("ApiKey", str(command.key_id))
+        await self._api_key_repo.revoke(command.key_id)

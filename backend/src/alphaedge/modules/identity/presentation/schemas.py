@@ -52,3 +52,24 @@ class ErrorDetail(BaseModel):
 
 class ErrorResponse(BaseModel):
     error: ErrorDetail
+
+
+class CreateApiKeyRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    scopes: list[str] = Field(default_factory=lambda: ["read:*", "write:*"])
+    rate_limit_tier: str = "standard"
+
+
+class ApiKeyResponse(BaseModel):
+    id: str
+    name: str
+    prefix: str
+    scopes: list[str]
+    rate_limit_tier: str
+    created_at: object
+    last_used_at: object | None = None
+
+
+class CreateApiKeyResponse(BaseModel):
+    api_key: ApiKeyResponse
+    key: str

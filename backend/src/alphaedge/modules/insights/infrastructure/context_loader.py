@@ -160,9 +160,7 @@ async def _trade_context(
         if run.user_id != user_id:
             raise AuthorizationError("You do not own this backtest run")
         trades = await trade_repo.list_by_run_id(source_id)
-        lines = [
-            f"- {t.side} {t.quantity}@{t.entry_price} pnl={t.pnl}" for t in trades[:50]
-        ]
+        lines = [f"- {t.side} {t.quantity}@{t.entry_price} pnl={t.pnl}" for t in trades[:50]]
         return {
             "source_label": f"backtest {run.name}",
             "trade_count": len(trades),

@@ -63,6 +63,30 @@ export default function LoginPage() {
           <LogIn size={16} />
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
+        <div className="relative my-2">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-ink-700" />
+          </div>
+          <div className="relative flex justify-center">
+            <span className="bg-ink-950 px-2 font-mono text-[10px] uppercase tracking-widest text-ink-400">
+              or continue with
+            </span>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <a
+            href="/api/v1/auth/oauth/google"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-ink-600 bg-ink-800/60 px-3 py-2 text-sm font-medium text-ink-100 transition hover:border-volt-500/40 hover:bg-ink-800"
+          >
+            Google
+          </a>
+          <a
+            href="/api/v1/auth/oauth/github"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-ink-600 bg-ink-800/60 px-3 py-2 text-sm font-medium text-ink-100 transition hover:border-volt-500/40 hover:bg-ink-800"
+          >
+            GitHub
+          </a>
+        </div>
       </form>
       <p className="mt-6 text-center text-sm text-ink-300">
         No account?{' '}

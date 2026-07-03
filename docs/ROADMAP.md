@@ -259,20 +259,22 @@ Development proceeds in **phases**, each delivering a vertical slice of function
 
 ---
 
-## Phase 10 — Production Hardening
+## Phase 10 — Production Hardening ✅
+
+**Status:** Complete
 
 **Goal:** Production-ready deployment.
 
 **Deliverables:**
-- [ ] OAuth integration (Google, GitHub)
-- [ ] Live market data WebSocket streaming
-- [ ] Alpaca broker adapter (live trading)
-- [ ] AWS deployment (ECS/RDS/ElastiCache)
-- [ ] Nginx reverse proxy configuration
-- [ ] Grafana dashboards
-- [ ] Load testing and performance benchmarks
-- [ ] Security audit
-- [ ] API rate limiting tiers
+- [x] OAuth integration (Google, GitHub)
+- [x] Live market data WebSocket streaming (`/api/v1/ws/market-data`)
+- [x] Alpaca broker adapter (live trading with paper fallback)
+- [x] AWS deployment scaffold (ECS cluster Terraform + README)
+- [x] Nginx reverse proxy configuration
+- [x] Grafana dashboards (Prometheus API metrics)
+- [x] Load testing script (`backend/scripts/load_test.py`)
+- [x] Security audit document
+- [x] API rate limiting tiers (Redis sliding window + API keys)
 
 ---
 
@@ -330,6 +332,7 @@ flowchart TD
 | Phase 7 — Execution | ✅ Complete |
 | Phase 8 — AI Insights | ✅ Complete |
 | Phase 9 — Frontend | ✅ Complete |
-| Phase 10–11 | 🔒 Not started |
+| Phase 10 — Production Hardening | ✅ Complete |
+| Phase 11 | 🔒 Future |
 
-**Action required:** Review Phase 9 frontend and approve Phase 10 to begin production hardening.
+**Action required:** Review Phase 10 and prioritize Phase 11 advanced features.
