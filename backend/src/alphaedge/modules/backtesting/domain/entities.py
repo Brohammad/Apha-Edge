@@ -112,13 +112,17 @@ class BacktestTrade:
         entry_time: datetime,
         commission: Decimal,
         slippage: Decimal,
+        *,
+        side: str = "buy",
     ) -> "BacktestTrade":
+        if side not in ("buy", "sell"):
+            raise ValidationError(f"Invalid trade side: {side}")
         return BacktestTrade(
             id=uuid4(),
             backtest_run_id=backtest_run_id,
             instrument_id=instrument_id,
-            side="buy",
-            quantity=quantity,
+            side=side,
+            quantity=abs(quantity),
             entry_price=entry_price,
             entry_time=entry_time,
             commission=commission,
@@ -136,5 +140,8 @@ class BacktestTrade:
         self.exit_time = exit_time
         self.commission += extra_commission
         self.slippage += extra_slippage
-        gross = (exit_price - self.entry_price) * self.quantity
+        if self.side == "buy":
+            gross = (exit_price - self.entry_price) * self.quantity
+        else:
+            gross = (self.entry_price - exit_price) * self.quantity
         self.pnl = gross - self.commission

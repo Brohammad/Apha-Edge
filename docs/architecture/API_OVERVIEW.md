@@ -102,11 +102,22 @@
 | POST | `/strategies/{id}/versions/{vid}/validate` | Validate/compile strategy |
 | GET | `/indicators` | List available indicators |
 
+### 3.2b Strategy deployments (paper)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/strategy-deployments` | List deployments |
+| POST | `/strategy-deployments` | Deploy validated version to paper |
+| POST | `/strategy-deployments/{id}/pause` | Pause signal evaluation |
+| POST | `/strategy-deployments/{id}/resume` | Resume deployment |
+
+Requires validated `strategy_version_id`, paper `broker_connection_id`, and `portfolio_id`. Signals are evaluated when bars are ingested. See [STRATEGY_GUIDE.md](../STRATEGY_GUIDE.md).
+
 ### 3.3 Backtesting
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/backtest-runs` | Submit backtest job |
+| POST | `/backtest-runs` | Submit backtest job (`config.allow_short` optional) |
 | GET | `/backtest-runs` | List backtest runs |
 | GET | `/backtest-runs/{id}` | Get run status + config |
 | GET | `/backtest-runs/{id}/result` | Get result metrics |

@@ -46,7 +46,7 @@ Every bounded context follows the same layer structure:
 |-----------------|----------------|-----------------|
 | **Identity** | Auth, users, roles, API keys | `User`, `Role`, `ApiKey` |
 | **Market Data** | Ingestion, normalization, streaming | `Instrument`, `Bar`, `Tick`, `CorporateAction` |
-| **Strategy** | DSL, indicators, signal logic | `Strategy`, `StrategyVersion`, `Indicator` |
+| **Strategy** | DSL, Python runtime, indicators, paper deployments | `Strategy`, `StrategyVersion`, `Indicator`, `StrategyDeployment` |
 | **Backtesting** | Event simulation, fills, walk-forward | `BacktestRun`, `BacktestResult` |
 | **Portfolio** | Holdings, allocation, rebalancing | `Portfolio`, `Holding`, `RebalancePlan` |
 | **Risk** | Metrics, limits, exposure | `RiskSnapshot`, `RiskLimit` |
@@ -171,19 +171,23 @@ Provider API → Raw Adapter → Validator → Normalizer → Storage → Domain
 
 ### 5.2 Strategy Engine
 
-Two authoring modes:
+Two authoring modes (both implemented):
 
-1. **Python strategies** — subclass `StrategyBase`, implement `on_bar()`, `on_tick()`, lifecycle hooks.
-2. **Custom DSL** — declarative YAML/JSON compiled to an internal AST, executed by a sandboxed interpreter.
+1. **Python strategies** — subclass `StrategyBase`, implement `on_bar()`, optional `on_init` / `on_tick` / `on_stop`. Loaded via a restricted sandbox (`PythonStrategyExecutor`).
+2. **Custom DSL** — declarative YAML parsed to `CompiledStrategy`, executed by `DSLStrategyExecutor`.
 
 ```
-DSL Source → Parser → AST → Validator → CompiledStrategy → Runtime
-Python Source → Import Guard → StrategyBase subclass → Runtime
+DSL Source → Parser → Validator → CompiledStrategy → DSLStrategyExecutor (or C++ when eligible)
+Python Source → AST Import Guard → exec sandbox → StrategyBase subclass → PythonStrategyExecutor
 ```
 
-**Indicator library:** composable, stateful indicator nodes (SMA, EMA, RSI, MACD, Bollinger, custom). Indicators are shared between backtest and live contexts.
+**Indicator library:** SMA, EMA, RSI, MACD, Bollinger Bands (incremental, shared between DSL and Python `context.indicator()`).
 
-**Signal generation:** strategies emit `Signal` domain events (BUY/SELL/HOLD with metadata: strength, stop-loss, take-profit).
+**DSL conditions:** `crossover`, `crossunder`, comparisons (`<`, `>`, …), `all(...)`, `any(...)`.
+
+**Signal generation:** strategies emit `Signal` (BUY/SELL/HOLD) with optional `strength`, `stop_loss_pct`, `take_profit_pct`.
+
+**Paper deployments:** `StrategyDeployment` links a validated version to a portfolio + paper broker. On bar ingestion, `evaluate_deployments_for_bar` runs the same runtime and submits orders. See [STRATEGY_GUIDE.md](../STRATEGY_GUIDE.md).
 
 ### 5.3 Backtesting Engine
 
@@ -202,9 +206,9 @@ Initialize Portfolio State
   → Emit BacktestCompleted event
 ```
 
-**Performance path:** C++ module for the inner event loop (pybind11 bindings). Python orchestrates; C++ handles hot path when event count > threshold.
+**Performance path:** C++ module (`alphaedge_cpp`) for DSL crossover/crossunder strategies when `CPP_ENGINE=auto` and `allow_short=false`. Advanced DSL and shorts use the Python engine.
 
-**Features:** slippage models (fixed, percentage, volume-based), commission schedules, position sizing (fixed, percent equity, Kelly), multi-asset, walk-forward windows.
+**Features (implemented):** fixed/percentage slippage, per-trade commission, position sizing (fixed qty / percent equity), partial fills, multi-instrument, optional short selling (`allow_short`), walk-forward via optimization module.
 
 ### 5.4 Portfolio Engine
 
@@ -380,8 +384,50 @@ To extract a microservice: move the package, add a message bus adapter replacing
 
 ---
 
-## 9. Approval Gate
+## 9. Implementation Status
 
-This document defines the **target architecture**. No implementation code has been written.
+**Status as of Phase 13 (2026):** The platform described in sections 1–8 is **implemented** as a modular monolith in this repository. Phases 0–12 and Phase 13a–13e are complete.
 
-**Next step (pending approval):** Phase 1 — Project scaffolding (Docker Compose, FastAPI skeleton, shared kernel, Identity module).
+### 9.1 Bounded context maturity
+
+| Context | Status | Notes |
+|---------|--------|-------|
+| Identity | ✅ Production-ready | JWT, OAuth, RBAC, API keys, rate limits |
+| Market Data | ✅ Operational | Mock + Alpha Vantage + Polygon; ingestion via Celery |
+| Strategy | ✅ Operational | DSL + Python runtime, versioning, validation, deployments |
+| Backtesting | ✅ Operational | Python + optional C++ DSL path; shorts optional |
+| Optimization | ✅ Operational | Grid, walk-forward, Bayesian (Optuna), genetic |
+| Portfolio & Risk | ✅ Operational | Holdings, VaR, Sharpe, limits, rebalance plans |
+| Execution | ✅ Operational | Paper broker, Alpaca adapter, order lifecycle |
+| AI Insights | ✅ Operational | OpenAI + mock provider |
+| Marketplace / Collab | ✅ Operational | Listings, Stripe, WebSocket co-editing |
+
+### 9.2 Strategy & execution data flow (implemented)
+
+```
+Authoring                    Backtest                         Paper deploy
+─────────                    ────────                         ────────────
+POST /strategies             POST /backtest-runs              POST /strategy-deployments
+  → versions                   → Celery execute_backtest          → active deployment row
+  → validate                   → BacktestEngine                   → on bar ingest:
+                                   → DSL or Python executor           StrategyRuntime.on_bar
+                                   → metrics + trades                 → SubmitOrder → Celery
+```
+
+**Live signal path:** `market_data.run_ingestion` → `bar_repo.upsert_many` → `evaluate_deployments_for_bar` per bar. This is synchronous in the ingestion worker (not a separate domain-event bus yet).
+
+### 9.3 Intentional limitations
+
+| Item | Current behavior |
+|------|------------------|
+| HOLD signals | Validated in DSL; engine ignores |
+| C++ backtest | Crossover/crossunder DSL only; no shorts or advanced DSL |
+| Deployment shorts | Backtest supports `allow_short`; deployments map BUY/SELL to long-only paper orders |
+| Outbox / event bus | Documented pattern; cross-module wiring is mostly direct calls + Celery |
+| Kelly / volume slippage | Not implemented (architecture aspirational) |
+
+### 9.4 Further reading
+
+- [STRATEGY_GUIDE.md](../STRATEGY_GUIDE.md) — DSL reference, Python runtime, deployment API
+- [ROADMAP.md](../ROADMAP.md) — phase history and Phase 13 deliverables
+- [API_OVERVIEW.md](API_OVERVIEW.md) — REST endpoint catalog

@@ -159,6 +159,35 @@ export default function BacktestDetailPage() {
             <StatCard label="Trades" value={result.total_trades} />
           </div>
 
+          {result.metrics?.long_trades != null && result.metrics?.short_trades != null && (
+            <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <StatCard
+                label="Long trades"
+                value={
+                  (result.metrics.long_trades as { count?: number })?.count ?? 0
+                }
+              />
+              <StatCard
+                label="Long win rate"
+                value={fmtPct(
+                  (result.metrics.long_trades as { win_rate?: string | null })?.win_rate,
+                )}
+              />
+              <StatCard
+                label="Short trades"
+                value={
+                  (result.metrics.short_trades as { count?: number })?.count ?? 0
+                }
+              />
+              <StatCard
+                label="Short win rate"
+                value={fmtPct(
+                  (result.metrics.short_trades as { win_rate?: string | null })?.win_rate,
+                )}
+              />
+            </div>
+          )}
+
           <div className="terminal-card mt-6 p-5">
             <p className="mb-3 font-mono text-[11px] uppercase tracking-widest text-ink-300">
               Equity curve

@@ -11,10 +11,13 @@ If you have never built a trading system before, think of AlphaEdge as four thin
 
 This README explains what every part does, how to run it locally, and how the pieces connect.
 
+**Start here:** [Complete project guide](#complete-project-guide) — narrative walkthrough, architecture, and copy-paste setup scripts.
+
 ---
 
 ## Table of contents
 
+- [Complete project guide](#complete-project-guide)
 - [What problem does AlphaEdge solve?](#what-problem-does-alphaedge-solve)
 - [Core concepts (beginner-friendly)](#core-concepts-beginner-friendly)
 - [What you can do in the app](#what-you-can-do-in-the-app)
@@ -26,10 +29,274 @@ This README explains what every part does, how to run it locally, and how the pi
 - [Authentication (email, Google, GitHub)](#authentication-email-google-github)
 - [Market data & live prices](#market-data--live-prices)
 - [API overview](#api-overview)
+- [Strategy guide](docs/STRATEGY_GUIDE.md) — DSL, Python runtime, deployments
 - [Testing](#testing)
 - [Environment variables](#environment-variables)
+- [Known limitations](#known-limitations)
 - [Common issues](#common-issues)
+- [Makefile reference](#makefile-reference)
 - [Further reading](#further-reading)
+- [Tech stack](#tech-stack)
+
+---
+
+## Complete project guide
+
+This section is the **full story** of AlphaEdge: what it is, how the pieces talk to each other, and the exact commands to go from zero to a running backtest.
+
+### What you are looking at
+
+AlphaEdge is a **quantitative trading research platform** shipped as a single repository with three runnable surfaces:
+
+| Surface | Path | Role |
+|---------|------|------|
+| **Web terminal** | `frontend/` | Where humans design strategies, launch backtests, manage portfolios, and place orders |
+| **API + workers** | `backend/` | Business logic, database, async jobs (backtests, ingestion, order execution) |
+| **Mobile companion** | `mobile/` | Read-only / lightweight companion (optional) |
+
+The backend is a **modular monolith**: one deployable app, but code is split into **bounded contexts** (identity, strategy, backtesting, execution, …). Each context has `domain/` → `application/` → `infrastructure/` → `presentation/` layers.
+
+### The research loop (what the product is for)
+
+```
+  ┌─────────────┐     ┌──────────────┐     ┌─────────────┐     ┌──────────────┐
+  │ 1. Author   │────▶│ 2. Validate  │────▶│ 3. Backtest │────▶│ 4. Optimize  │
+  │ DSL/Python  │     │ compile hash │     │ Celery job  │     │ grid search  │
+  └─────────────┘     └──────────────┘     └──────┬──────┘     └──────────────┘
+                                                   │
+                     ┌──────────────┐     ┌────────▼────────┐     ┌──────────────┐
+                     │ 6. Live/manual│◀────│ 5. Paper deploy │────▶│ AI insights  │
+                     │ orders/Alpaca │     │ bar → signal    │     │ explanations │
+                     └──────────────┘     └─────────────────┘     └──────────────┘
+```
+
+1. **Author** — Write rules in YAML (DSL) or Python (`StrategyBase`).
+2. **Validate** — Compiler checks syntax, indicators, and dangerous Python imports.
+3. **Backtest** — Event-driven simulator replays historical bars; outputs equity curve + metrics.
+4. **Optimize** — Run hundreds of backtests with different parameters (Celery-parallel).
+5. **Deploy to paper** — Attach a validated strategy to a paper broker; new bars trigger signals → orders.
+6. **Execute** — Manual orders or Alpaca (when configured); portfolio and risk modules track exposure.
+
+### How requests flow through the system
+
+```mermaid
+flowchart TB
+    subgraph browser [Browser localhost:5173]
+        UI[React pages]
+    end
+    subgraph api [FastAPI localhost:8000]
+        R[REST routers]
+        H[Command handlers]
+    end
+    subgraph data [Data layer]
+        PG[(PostgreSQL)]
+        RD[(Redis)]
+    end
+    subgraph async [Celery workers]
+        BT[execute_backtest]
+        OR[execute_order]
+        ING[run_ingestion]
+    end
+    UI -->|JWT or API key| R
+    R --> H
+    H --> PG
+    H -->|enqueue| RD
+    RD --> BT
+    RD --> OR
+    RD --> ING
+    BT --> PG
+    ING -->|upsert bars| PG
+    ING -->|evaluate deployments| OR
+```
+
+**Synchronous path:** login, list strategies, validate version — API reads/writes Postgres and returns immediately.
+
+**Asynchronous path:** backtest submit → row in `backtest_runs` with status `queued` → Celery worker runs `BacktestEngine` → status `completed` + results. Same pattern for orders and market-data ingestion.
+
+### Backend modules (what each folder does)
+
+| Module | `backend/src/alphaedge/modules/` | Responsibility |
+|--------|----------------------------------|----------------|
+| **identity** | `identity/` | Users, JWT, OAuth, API keys, RBAC |
+| **market_data** | `market_data/` | Instruments, OHLCV bars, quotes, ingestion |
+| **strategy** | `strategy/` | DSL compiler, Python sandbox, versions, **deployments** |
+| **backtesting** | `backtesting/` | Event engine, fills, metrics, C++ bridge |
+| **optimization** | `optimization/` | Grid / walk-forward / Optuna / genetic search |
+| **portfolio** | `portfolio/` | Holdings, cash, performance snapshots |
+| **risk** | `risk/` | VaR, Sharpe, drawdown, limits |
+| **execution** | `execution/` | Paper broker, Alpaca, order lifecycle |
+| **insights** | `insights/` | ChatGPT / mock strategy reports |
+| **marketplace** | `marketplace/` | Publish & clone strategies |
+| **collaboration** | `collaboration/` | WebSocket co-editing |
+| **payments** | `payments/` | Stripe checkout for paid clones |
+| **organization** | `organization/` | Team desks |
+
+Shared infrastructure lives in `backend/src/alphaedge/shared/` (database, Celery, Redis, logging).
+
+### Strategy engine (the core)
+
+Two authoring modes, one runtime concept:
+
+| | DSL (YAML) | Python |
+|---|-----------|--------|
+| **Example** | `when: crossover(sma(10), sma(30))` → `BUY` | `class S(StrategyBase): def on_bar(...)` |
+| **Backtest** | Python engine or C++ (simple crossover only) | Python engine only |
+| **Deploy** | Yes | Yes |
+
+Full DSL reference: [docs/STRATEGY_GUIDE.md](docs/STRATEGY_GUIDE.md).
+
+**Versioning:** Every save creates a new `strategy_version`. Backtests and deployments pin a specific version id. You must **validate** before backtesting.
+
+**Paper deployment:** `POST /api/v1/strategy-deployments` links a version → portfolio → paper broker → instruments. When ingestion writes a bar, the deployment runner evaluates signals and submits orders.
+
+### One-shot bootstrap script
+
+Run from the repository root after cloning. Requires Docker, Python 3.12+, and Node 22+.
+
+```bash
+#!/usr/bin/env bash
+# AlphaEdge local bootstrap — run from repo root
+set -euo pipefail
+
+# 1. Environment
+cp -n .env.example .env 2>/dev/null || true
+echo ">>> Edit .env and set APP_SECRET_KEY, JWT_SECRET_KEY (and optional API keys)"
+
+# 2. Infrastructure
+docker compose -f infrastructure/docker-compose.yml up -d postgres redis
+
+# 3. Backend
+make install
+make migrate
+make seed
+
+# 4. Instructions for parallel terminals
+cat <<'EOF'
+
+AlphaEdge is installed. Open THREE terminals:
+
+  Terminal A — API:
+    cd backend && source .venv/bin/activate
+    RATE_LIMIT_ENABLED=false uvicorn alphaedge.main:app --host 127.0.0.1 --port 8000 --reload
+
+  Terminal B — Celery (required for backtests & orders):
+    cd backend && source .venv/bin/activate
+    celery -A alphaedge.shared.infrastructure.celery_app worker --loglevel=info
+
+  Terminal C — Frontend:
+    make frontend-dev
+    → http://localhost:5173
+
+Health check: curl -s http://localhost:8000/api/v1/health/ready | jq
+
+EOF
+```
+
+Save as `scripts/bootstrap-dev.sh` or paste into your shell.
+
+### End-to-end demo script (API + UI)
+
+After bootstrap, this is the **happy path** a new developer should follow:
+
+```bash
+# --- 1. Register and login (or use the UI at /register) ---
+BASE=http://localhost:8000/api/v1
+EMAIL="dev@example.com"
+PASS="SecurePass123!"
+
+curl -s -X POST "$BASE/auth/register" -H 'Content-Type: application/json' \
+  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\",\"display_name\":\"Dev\"}" | jq
+
+TOKEN=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' \
+  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}" | jq -r '.data.access_token')
+
+AUTH="Authorization: Bearer $TOKEN"
+
+# --- 2. List seeded instruments ---
+curl -s "$BASE/instruments?limit=5" -H "$AUTH" | jq '.data.items[].symbol'
+INSTRUMENT_ID=$(curl -s "$BASE/instruments?limit=1" -H "$AUTH" | jq -r '.data.items[0].id')
+
+# --- 3. Create a DSL strategy ---
+STRATEGY=$(curl -s -X POST "$BASE/strategies" -H "$AUTH" -H 'Content-Type: application/json' \
+  -d '{
+    "name": "demo-golden-cross",
+    "strategy_type": "dsl",
+    "source_code": "name: golden-cross\nparameters:\n  fast: 10\n  slow: 30\nsignals:\n  - when: crossover(sma(fast), sma(slow))\n    then: BUY\n  - when: crossunder(sma(fast), sma(slow))\n    then: SELL\n"
+  }')
+STRATEGY_ID=$(echo "$STRATEGY" | jq -r '.data.id')
+VERSION_ID=$(curl -s "$BASE/strategies/$STRATEGY_ID/versions" -H "$AUTH" | jq -r '.data.items[0].id')
+
+# --- 4. Validate ---
+curl -s -X POST "$BASE/strategies/$STRATEGY_ID/versions/$VERSION_ID/validate" -H "$AUTH" | jq
+
+# --- 5. Submit backtest (Celery worker must be running) ---
+RUN=$(curl -s -X POST "$BASE/backtest-runs" -H "$AUTH" -H 'Content-Type: application/json' \
+  -d "{
+    \"strategy_version_id\": \"$VERSION_ID\",
+    \"name\": \"Demo run\",
+    \"config\": {
+      \"instrument_ids\": [\"$INSTRUMENT_ID\"],
+      \"timeframe\": \"1d\",
+      \"start_date\": \"2025-01-01T00:00:00+00:00\",
+      \"end_date\": \"2025-12-31T00:00:00+00:00\",
+      \"initial_capital\": \"100000\",
+      \"allow_short\": false,
+      \"position_sizing\": {\"model\": \"fixed_quantity\", \"value\": 10}
+    }
+  }")
+RUN_ID=$(echo "$RUN" | jq -r '.data.id')
+echo "Backtest run id: $RUN_ID — poll: curl -s $BASE/backtest-runs/$RUN_ID -H \"$AUTH\" | jq '.data.status'"
+
+# --- 6. When status=completed, fetch results ---
+# curl -s "$BASE/backtest-runs/$RUN_ID/result" -H "$AUTH" | jq
+```
+
+The same flow is available in the UI: **Strategies → Validate → Backtests → Launch**.
+
+### Frontend pages map
+
+| Route | Page | Backend modules touched |
+|-------|------|-------------------------|
+| `/` | Dashboard | backtesting, market_data, portfolios |
+| `/strategies` | Strategy list | strategy |
+| `/strategies/:id` | Editor, deploy, validate | strategy, collaboration |
+| `/backtests` | Launch & monitor runs | backtesting |
+| `/backtests/:id` | Equity curve, trades | backtesting |
+| `/optimizations` | Parameter search | optimization, backtesting |
+| `/portfolios` | Holdings | portfolio, risk |
+| `/orders` | Order blotter | execution |
+| `/marketplace` | Listings | marketplace, payments |
+| `/insights` | AI reports | insights |
+
+### Database & migrations
+
+- **ORM:** SQLAlchemy 2.0 async
+- **Migrations:** Alembic in `backend/alembic/versions/` (run `make migrate`)
+- **Seed:** `make seed` — roles, admin user pattern, AAPL/MSFT/GOOGL/SPY, 30 days mock bars
+
+Key tables: `users`, `strategies`, `strategy_versions`, `strategy_deployments`, `backtest_runs`, `backtest_results`, `bars`, `orders`, `portfolios`, `holdings`.
+
+Schema diagram: [docs/architecture/DATABASE_SCHEMA.md](docs/architecture/DATABASE_SCHEMA.md).
+
+### Optional: C++ backtest accelerator
+
+```bash
+make build-cpp          # builds alphaedge_cpp pybind11 module
+CPP_ENGINE=auto         # default — uses C++ when installed and strategy is eligible
+make benchmark          # compare Python vs C++ throughput
+```
+
+C++ is used only for **simple DSL** (crossover/crossunder, no shorts). Everything else uses Python.
+
+### Where to go deeper
+
+| Topic | Document |
+|-------|----------|
+| Strategy DSL, Python, deployments | [docs/STRATEGY_GUIDE.md](docs/STRATEGY_GUIDE.md) |
+| System architecture & implementation status | [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) |
+| Every REST endpoint | [docs/architecture/API_OVERVIEW.md](docs/architecture/API_OVERVIEW.md) |
+| Phase history | [docs/ROADMAP.md](docs/ROADMAP.md) |
+| Production trading | [docs/LIVE_TRADING_RUNBOOK.md](docs/LIVE_TRADING_RUNBOOK.md) |
 
 ---
 
@@ -82,8 +349,9 @@ AlphaEdge automates that research loop. You go from **idea → backtest → opti
 ### 3. Backtesting
 - Submit a backtest job (runs asynchronously via **Celery**)
 - Configure capital, slippage, commission, position sizing
-- View equity curve, trade list, Sharpe ratio, max drawdown
-- Optional **C++ engine** for faster DSL backtests (`make build-cpp`)
+- **Long-only by default**; set `allow_short: true` in config to let SELL open short positions (BUY covers)
+- View equity curve, trade list, Sharpe ratio, max drawdown (long/short breakdown when shorts enabled)
+- Optional **C++ engine** for faster DSL backtests (`make build-cpp`; disabled when `allow_short` is on)
 
 ### 4. Optimization
 - Grid-search parameters (e.g. fast/slow SMA periods)
@@ -385,6 +653,7 @@ Providers: `mock`, `alpha_vantage`, `polygon` (requires respective API keys).
 | Instruments | `/instruments/` | list, bars, latest bar |
 | Market data | `/market-data/` | `quotes`, `ingest` |
 | Strategies | `/strategies/` | CRUD, versions, validate |
+| Deployments | `/strategy-deployments/` | paper deploy, pause, resume |
 | Indicators | `/indicators/` | list built-in indicators |
 | Backtests | `/backtest-runs/` | submit, result, equity-curve, trades |
 | Optimization | `/optimization-runs/` | submit, trials, best result |
@@ -455,6 +724,25 @@ Copy `.env.example` to `.env` in the repo root. Key variables:
 
 ---
 
+## Known limitations
+
+AlphaEdge is a full research terminal, but not every architecture diagram feature is wired end-to-end yet. Read [docs/STRATEGY_GUIDE.md](docs/STRATEGY_GUIDE.md) for the strategy authoring reference.
+
+| Area | What works today | Gap |
+|------|------------------|-----|
+| **DSL backtests** | Crossover, comparisons, `all`/`any`, stop/take-profit metadata | C++ engine only supports crossover/crossunder |
+| **Python backtests** | `StrategyBase` sandbox, indicators via `context` | No C++ acceleration |
+| **Short selling** | `allow_short: true` in backtest config | Not applied to paper deployments |
+| **HOLD signals** | Validated in DSL | Ignored at runtime |
+| **Paper deploy** | Bar ingestion → signal → paper order | Paper broker only; no risk-limit gate on auto-orders |
+| **Live trading** | Manual orders via Alpaca when enabled | No strategy-driven live execution |
+| **Market data** | Seed mock bars + optional Polygon/AV | Production-scale ingestion is bring-your-own keys |
+| **Domain events** | Celery tasks + direct calls | Full outbox/event-bus pattern not everywhere |
+
+Phase 13 status: [docs/ROADMAP.md](docs/ROADMAP.md) (13a–13f complete as of this release).
+
+---
+
 ## Common issues
 
 | Symptom | Fix |
@@ -493,6 +781,7 @@ Copy `.env.example` to `.env` in the repo root. Key variables:
 
 | Document | Description |
 |----------|-------------|
+| [Strategy guide](docs/STRATEGY_GUIDE.md) | DSL, Python runtime, deployments, backtest config |
 | [Architecture](docs/architecture/ARCHITECTURE.md) | Bounded contexts, events, deployment |
 | [Repository Structure](docs/architecture/REPOSITORY_STRUCTURE.md) | Code organization conventions |
 | [Database Schema](docs/architecture/DATABASE_SCHEMA.md) | Tables and relationships |

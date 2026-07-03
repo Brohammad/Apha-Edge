@@ -14,7 +14,7 @@ from alphaedge.modules.backtesting.domain.position_sizer import PositionSizer
 from alphaedge.modules.market_data.domain.entities import Bar
 from alphaedge.modules.strategy.domain.dsl import StrategyCompiler
 from alphaedge.modules.strategy.domain.enums import SignalAction, StrategyType
-from alphaedge.modules.strategy.domain.enums import SignalAction, StrategyType
+from alphaedge.modules.strategy.domain.value_objects import Signal
 
 
 @dataclass
@@ -93,7 +93,11 @@ class BacktestEngine:
         strategy_name: str,
         parameters: dict[str, object],
     ) -> BacktestOutput:
-        if strategy_type == StrategyType.DSL and self._should_use_cpp(source_code, strategy_name, parameters):
+        if (
+            strategy_type == StrategyType.DSL
+            and not self._config.allow_short
+            and self._should_use_cpp(source_code, strategy_name, parameters)
+        ):
             from alphaedge.modules.backtesting.domain.cpp_bridge import run_cpp_backtest
 
             compiled, _ = StrategyCompiler.validate_and_compile(
@@ -128,6 +132,7 @@ class BacktestEngine:
             self._config.initial_capital,
             portfolio.equity_curve,
             closed,
+            allow_short=self._config.allow_short,
         )
         for trade in closed:
             trade.backtest_run_id = self._run_id
@@ -186,13 +191,17 @@ class BacktestEngine:
         iid = bar.instrument_id
         meta = portfolio.signal_meta.get(iid)
         trade = portfolio.open_trades.get(iid)
-        if not meta or not trade or portfolio.position_qty(iid) <= 0:
+        pos = portfolio.position_qty(iid)
+        if not meta or not trade or pos == 0:
             return
         price = bar.close
         entry = trade.entry_price
         if entry <= 0:
             return
-        change_pct = float((price - entry) / entry * 100)
+        if pos > 0:
+            change_pct = float((price - entry) / entry * 100)
+        else:
+            change_pct = float((entry - price) / entry * 100)
         if meta.stop_loss_pct is not None and change_pct <= -meta.stop_loss_pct:
             self._close_position(portfolio, iid, price, bar.timestamp)
             portfolio.signal_meta.pop(iid, None)
@@ -203,23 +212,36 @@ class BacktestEngine:
 
     def _execute_signal(self, portfolio: _Portfolio, bar: Bar, signal: Signal) -> None:
         iid = bar.instrument_id
-        price = bar.close
-        equity = portfolio.equity if portfolio.equity_curve else portfolio.cash
         pos = portfolio.position_qty(iid)
         action = signal.action
 
-        if action == SignalAction.BUY and pos > 0:
-            return
-        if action == SignalAction.SELL and pos <= 0:
+        if action == SignalAction.BUY:
+            if pos > 0:
+                return
+            if pos < 0:
+                self._close_position(portfolio, iid, bar.close, bar.timestamp)
+                portfolio.signal_meta.pop(iid, None)
+                return
+            self._open_long(portfolio, bar, signal)
             return
 
         if action == SignalAction.SELL:
-            self._close_position(portfolio, iid, price, bar.timestamp)
-            portfolio.signal_meta.pop(iid, None)
-            return
+            if pos < 0:
+                return
+            if pos > 0:
+                self._close_position(portfolio, iid, bar.close, bar.timestamp)
+                portfolio.signal_meta.pop(iid, None)
+                return
+            if self._config.allow_short:
+                self._open_short(portfolio, bar, signal)
 
+    def _open_long(self, portfolio: _Portfolio, bar: Bar, signal: Signal) -> None:
+        iid = bar.instrument_id
+        price = bar.close
+        equity = portfolio.equity if portfolio.equity_curve else portfolio.cash
+        pos = portfolio.position_qty(iid)
         qty = PositionSizer.compute_quantity(
-            action, price, equity, portfolio.cash, pos, self._config
+            SignalAction.BUY, price, equity, portfolio.cash, pos, self._config
         )
         fill = FillSimulator.simulate(TradeSide.BUY, qty, price, self._config)
         if not fill:
@@ -237,6 +259,34 @@ class BacktestEngine:
             bar.timestamp,
             fill.commission,
             fill.slippage_amount,
+            side="buy",
+        )
+        portfolio.open_trades[iid] = trade
+        if signal.stop_loss_pct is not None or signal.take_profit_pct is not None:
+            portfolio.signal_meta[iid] = signal
+
+    def _open_short(self, portfolio: _Portfolio, bar: Bar, signal: Signal) -> None:
+        iid = bar.instrument_id
+        price = bar.close
+        equity = portfolio.equity if portfolio.equity_curve else portfolio.cash
+        qty = PositionSizer.compute_quantity(
+            SignalAction.SELL, price, equity, portfolio.cash, Decimal("0"), self._config
+        )
+        fill = FillSimulator.simulate(TradeSide.SELL, qty, price, self._config)
+        if not fill:
+            return
+        proceeds = fill.fill_price * fill.quantity - fill.commission
+        portfolio.cash += proceeds
+        portfolio.positions[iid] = -fill.quantity
+        trade = BacktestTrade.open(
+            self._run_id,
+            iid,
+            fill.quantity,
+            fill.fill_price,
+            bar.timestamp,
+            fill.commission,
+            fill.slippage_amount,
+            side="sell",
         )
         portfolio.open_trades[iid] = trade
         if signal.stop_loss_pct is not None or signal.take_profit_pct is not None:
@@ -250,15 +300,24 @@ class BacktestEngine:
         timestamp: datetime,
     ) -> None:
         pos = portfolio.position_qty(instrument_id)
-        if pos <= 0:
+        if pos == 0:
             return
-        fill = FillSimulator.simulate(TradeSide.SELL, pos, price, self._config)
-        if not fill:
-            return
-        proceeds = fill.fill_price * fill.quantity - fill.commission
-        portfolio.cash += proceeds
+        trade = portfolio.open_trades.get(instrument_id)
+        if pos > 0:
+            fill = FillSimulator.simulate(TradeSide.SELL, pos, price, self._config)
+            if not fill:
+                return
+            proceeds = fill.fill_price * fill.quantity - fill.commission
+            portfolio.cash += proceeds
+        else:
+            qty = abs(pos)
+            fill = FillSimulator.simulate(TradeSide.BUY, qty, price, self._config)
+            if not fill:
+                return
+            cost = fill.fill_price * fill.quantity + fill.commission
+            portfolio.cash -= cost
         portfolio.positions[instrument_id] = Decimal("0")
-        trade = portfolio.open_trades.pop(instrument_id, None)
-        if trade:
-            trade.close(fill.fill_price, timestamp, fill.commission, fill.slippage_amount)
-            portfolio.closed_trades.append(trade)
+        open_trade = portfolio.open_trades.pop(instrument_id, trade)
+        if open_trade:
+            open_trade.close(fill.fill_price, timestamp, fill.commission, fill.slippage_amount)
+            portfolio.closed_trades.append(open_trade)

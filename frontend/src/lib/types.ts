@@ -138,6 +138,7 @@ export interface BacktestConfig {
   commission?: { per_trade: number | string }
   position_sizing?: { model: 'fixed_quantity' | 'percent_equity'; value: number | string }
   partial_fill_ratio?: number | string
+  allow_short?: boolean
 }
 
 export interface BacktestRun {

@@ -38,6 +38,7 @@ class BacktestConfig:
     commission: CommissionConfig
     position_sizing: PositionSizingConfig
     partial_fill_ratio: Decimal = Decimal("1")
+    allow_short: bool = False
 
     @staticmethod
     def from_dict(data: dict[str, object]) -> "BacktestConfig":
@@ -78,6 +79,7 @@ class BacktestConfig:
                 value=Decimal(str(sizing_raw.get("value", 0.1))),  # type: ignore[union-attr]
             ),
             partial_fill_ratio=Decimal(str(data.get("partial_fill_ratio", 1))),
+            allow_short=bool(data.get("allow_short", False)),
         )
 
     def to_dict(self) -> dict[str, object]:
@@ -94,4 +96,5 @@ class BacktestConfig:
                 "value": str(self.position_sizing.value),
             },
             "partial_fill_ratio": str(self.partial_fill_ratio),
+            "allow_short": self.allow_short,
         }

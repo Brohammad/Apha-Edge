@@ -168,7 +168,120 @@ class TestBacktestConfig:
         config = _make_config()
         assert config.slippage.model == SlippageModel.FIXED
         assert config.position_sizing.model == PositionSizingModel.FIXED_QUANTITY
+        assert config.allow_short is False
 
+    def test_allow_short_from_dict(self):
+        config = _make_config(allow_short=True)
+        assert config.allow_short is True
+
+
+class TestShortSelling:
+    def test_allow_short_disabled_ignores_sell_when_flat(self):
+        iid = uuid4()
+        config = _make_config(
+            instrument_ids=[str(iid)],
+            position_sizing={"model": "fixed_quantity", "value": "10"},
+            allow_short=False,
+        )
+        source = """
+from alphaedge.modules.strategy.domain import StrategyBase, Signal, SignalAction
+
+class SellFirst(StrategyBase):
+    def __init__(self):
+        self._fired = False
+
+    def on_bar(self, bar, context):
+        if not self._fired:
+            self._fired = True
+            return Signal(action=SignalAction.SELL, reason="short attempt")
+        return None
+"""
+        bars = _make_bars(iid, ["100", "101", "102"])
+        engine = BacktestEngine(uuid4(), config)
+        output = engine.run(
+            bars_by_instrument={iid: bars},
+            strategy_type=StrategyType.PYTHON,
+            source_code=source,
+            strategy_name="sell_first",
+            parameters={},
+        )
+        assert output.result.total_trades == 0
+
+    def test_allow_short_opens_and_covers(self):
+        iid = uuid4()
+        config = _make_config(
+            instrument_ids=[str(iid)],
+            position_sizing={"model": "fixed_quantity", "value": "10"},
+            allow_short=True,
+        )
+        source = """
+from alphaedge.modules.strategy.domain import StrategyBase, Signal, SignalAction
+
+class ShortRoundTrip(StrategyBase):
+    def __init__(self):
+        self._n = 0
+
+    def on_bar(self, bar, context):
+        self._n += 1
+        if self._n == 1:
+            return Signal(action=SignalAction.SELL, reason="open short")
+        if self._n == 3:
+            return Signal(action=SignalAction.BUY, reason="cover short")
+        return None
+"""
+        bars = _make_bars(iid, ["100", "99", "98", "97"])
+        engine = BacktestEngine(uuid4(), config)
+        output = engine.run(
+            bars_by_instrument={iid: bars},
+            strategy_type=StrategyType.PYTHON,
+            source_code=source,
+            strategy_name="short_round_trip",
+            parameters={},
+        )
+        assert output.result.total_trades == 1
+        assert output.trades[0].side == "sell"
+        assert output.trades[0].pnl is not None
+        assert output.trades[0].pnl > 0
+        metrics = output.result.metrics
+        assert "short_trades" in metrics
+        assert metrics["short_trades"]["count"] == 1
+
+    def test_short_pnl_when_price_rises(self):
+        iid = uuid4()
+        config = _make_config(
+            instrument_ids=[str(iid)],
+            position_sizing={"model": "fixed_quantity", "value": "10"},
+            allow_short=True,
+        )
+        source = """
+from alphaedge.modules.strategy.domain import StrategyBase, Signal, SignalAction
+
+class ShortLose(StrategyBase):
+    def __init__(self):
+        self._n = 0
+
+    def on_bar(self, bar, context):
+        self._n += 1
+        if self._n == 1:
+            return Signal(action=SignalAction.SELL, reason="open short")
+        if self._n == 2:
+            return Signal(action=SignalAction.BUY, reason="cover")
+        return None
+"""
+        bars = _make_bars(iid, ["100", "110"])
+        engine = BacktestEngine(uuid4(), config)
+        output = engine.run(
+            bars_by_instrument={iid: bars},
+            strategy_type=StrategyType.PYTHON,
+            source_code=source,
+            strategy_name="short_lose",
+            parameters={},
+        )
+        assert output.trades[0].pnl is not None
+        assert output.trades[0].pnl < 0
+
+
+class TestBacktestConfigValidation:
     def test_invalid_dates(self):
         with pytest.raises(ValidationError):
             BacktestConfig.from_dict(

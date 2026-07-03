@@ -15,13 +15,19 @@ class PositionSizer:
         current_position: Decimal,
         config: BacktestConfig,
     ) -> Decimal:
-        if signal == SignalAction.SELL:
+        if signal == SignalAction.SELL and current_position > 0:
             return current_position
+
         sizing = config.position_sizing
         if sizing.model == PositionSizingModel.FIXED_QUANTITY:
             qty = sizing.value
         else:
             allocation = equity * sizing.value
             qty = (allocation / price).quantize(Decimal("0.0001")) if price > 0 else Decimal("0")
-        max_affordable = (cash / price).quantize(Decimal("0.0001")) if price > 0 else Decimal("0")
-        return min(qty, max_affordable)
+
+        if signal == SignalAction.BUY:
+            max_affordable = (cash / price).quantize(Decimal("0.0001")) if price > 0 else Decimal("0")
+            return min(qty, max_affordable)
+
+        # Opening a short position (flat account, allow_short enforced by caller)
+        return qty

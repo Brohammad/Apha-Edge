@@ -19,6 +19,8 @@ class MetricsCalculator:
         initial_capital: Decimal,
         equity_curve: list[EquityPoint],
         trades: list[BacktestTrade],
+        *,
+        allow_short: bool = False,
     ) -> BacktestResult:
         if not equity_curve:
             return BacktestResult.create(
@@ -52,11 +54,13 @@ class MetricsCalculator:
         curve_json = [
             {"timestamp": p.timestamp.isoformat(), "equity": str(p.equity)} for p in equity_curve
         ]
-        metrics_blob = {
+        metrics_blob: dict[str, object] = {
             "initial_capital": str(initial_capital),
             "final_equity": str(final_equity),
             "days": days,
         }
+        if allow_short:
+            metrics_blob.update(MetricsCalculator._long_short_stats(trades))
 
         return BacktestResult.create(
             backtest_run_id=backtest_run_id,
@@ -135,3 +139,26 @@ class MetricsCalculator:
         if gross_loss > 0:
             profit_factor = Decimal(str(gross_profit / gross_loss))
         return win_rate, profit_factor
+
+    @staticmethod
+    def _long_short_stats(trades: list[BacktestTrade]) -> dict[str, object]:
+        closed = [t for t in trades if t.pnl is not None]
+        long_trades = [t for t in closed if t.side == "buy"]
+        short_trades = [t for t in closed if t.side == "sell"]
+
+        def _side_stats(side_trades: list[BacktestTrade]) -> dict[str, object]:
+            if not side_trades:
+                return {"count": 0, "win_rate": None, "total_pnl": "0"}
+            wins = [t for t in side_trades if t.pnl and t.pnl > 0]
+            total_pnl = sum(t.pnl for t in side_trades if t.pnl is not None)
+            win_rate = Decimal(len(wins)) / Decimal(len(side_trades))
+            return {
+                "count": len(side_trades),
+                "win_rate": str(win_rate.quantize(Decimal("0.0001"))),
+                "total_pnl": str(total_pnl),
+            }
+
+        return {
+            "long_trades": _side_stats(long_trades),
+            "short_trades": _side_stats(short_trades),
+        }

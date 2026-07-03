@@ -45,6 +45,7 @@ function NewBacktestModal({
     'percent_equity',
   )
   const [sizingValue, setSizingValue] = useState('0.1')
+  const [allowShort, setAllowShort] = useState(false)
 
   const { data: strategies } = useQuery({
     queryKey: ['strategies', 'list'],
@@ -86,6 +87,7 @@ function NewBacktestModal({
             end_date: iso(endDate),
             initial_capital: capital,
             position_sizing: { model: sizingModel, value: Number(sizingValue) },
+            allow_short: allowShort,
           },
         },
       }),
@@ -225,6 +227,17 @@ function NewBacktestModal({
                 onChange={(e) => setSizingValue(e.target.value)}
               />
             </div>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-200">
+              <input
+                type="checkbox"
+                checked={allowShort}
+                onChange={(e) => setAllowShort(e.target.checked)}
+                className="rounded border-ink-500"
+              />
+              Allow short selling (SELL opens short when flat; uses Python engine)
+            </label>
           </div>
         </div>
 
