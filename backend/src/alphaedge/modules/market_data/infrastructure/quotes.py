@@ -111,8 +111,13 @@ class QuoteService:
 
     async def get_quotes(self, symbols: list[str]) -> list[QuoteSnapshot]:
         results: list[QuoteSnapshot] = []
+        seen: set[str] = set()
         for symbol in symbols:
-            quote = await self._get_one(symbol)
+            sym = symbol.upper()
+            if sym in seen:
+                continue
+            seen.add(sym)
+            quote = await self._get_one(sym)
             if quote:
                 results.append(quote)
         return results
@@ -121,7 +126,7 @@ class QuoteService:
         sym = symbol.upper()
         if self._cache:
             cached = await self._cache.get(sym)
-            if cached:
+            if cached and cached.source == "alpha_vantage":
                 return cached
 
         try:
@@ -139,6 +144,10 @@ class QuoteService:
         if not instrument:
             return None
 
+        latest = await self._bar_repo.get_latest(instrument.id, Timeframe.D1)
+        if not latest:
+            return None
+
         bars = await self._bar_repo.get_bars(
             instrument.id,
             Timeframe.D1,
@@ -147,10 +156,6 @@ class QuoteService:
             limit=2,
             offset=0,
         )
-        if not bars:
-            return None
-
-        latest = bars[0]
         prev = bars[1] if len(bars) > 1 else None
         change_pct = None
         if prev and prev.close != 0:
@@ -161,5 +166,5 @@ class QuoteService:
             price=latest.close,
             change_pct=change_pct,
             as_of=latest.timestamp,
-            source=latest.source,
+            source="database",
         )

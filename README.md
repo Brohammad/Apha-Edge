@@ -463,7 +463,8 @@ Copy `.env.example` to `.env` in the repo root. Key variables:
 | OAuth redirects back to login | Ensure OAuth callback URLs match exactly; restart API after `.env` changes |
 | Google "Access blocked" | Add your email as a test user in Google Cloud Console |
 | GitHub `redirect_uri_mismatch` | Callback must be `http://localhost:8000/api/v1/auth/oauth/github/callback` |
-| Stale AAPL price on home page | Set `ALPHA_VANTAGE_API_KEY` and restart API |
+| Stale AAPL price on home page | Set `ALPHA_VANTAGE_API_KEY` in `.env` and restart API — ⏱ on the ticker means seed DB fallback |
+| AI insight echoes the prompt / looks like a template | Old report — request a new insight; restart API so dev runs updated code in-process |
 | AI insight fails / "OPENAI_API_KEY is required" | Set `OPENAI_API_KEY` in `.env` and restart API; or use `LLM_PROVIDER=mock` for offline mode |
 | `429 Rate limit exceeded` during tests | Start API with `RATE_LIMIT_ENABLED=false` |
 | `Admin role required` creating instruments | Use seed data or an admin account; instrument creation is admin-only in dev |

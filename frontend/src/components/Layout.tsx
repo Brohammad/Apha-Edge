@@ -16,9 +16,9 @@ import {
 import MarketClock from './MarketClock'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import type { Instrument, Paginated, Quote } from '../lib/types'
+import type { Quote } from '../lib/types'
 
-const TAPE_SYMBOLS = ['AAPL', 'MSFT', 'GOOGL', 'SPY']
+const TAPE_SYMBOLS = ['AAPL', 'MSFT', 'GOOGL', 'SPY'] as const
 
 const NAV = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
@@ -37,61 +37,86 @@ interface TapeEntry {
   close: number
   changePct: number | null
   live: boolean
+  asOf: string | null
+}
+
+function formatTapeDate(iso: string | null): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function useTickerTape(): TapeEntry[] {
-  const { data: instruments } = useQuery({
-    queryKey: ['instruments', 'tape'],
-    queryFn: () => api<Paginated<Instrument>>('/instruments', { query: { limit: 10 } }),
-    staleTime: 5 * 60_000,
-  })
-
-  const symbols =
-    instruments?.items.length ? instruments.items.map((i) => i.symbol) : TAPE_SYMBOLS
-
   const { data: tape } = useQuery({
-    queryKey: ['tape-quotes', symbols.join(',')],
-    enabled: symbols.length > 0,
+    queryKey: ['tape-quotes', TAPE_SYMBOLS.join(',')],
     refetchInterval: 60_000,
     staleTime: 30_000,
     queryFn: async () => {
       const quotes = await api<{ items: Quote[] }>('/market-data/quotes', {
-        query: { symbols: symbols.join(',') },
+        query: { symbols: TAPE_SYMBOLS.join(',') },
       })
-      return quotes.items.map((q) => ({
-        symbol: q.symbol,
-        close: Number(q.price),
-        changePct: q.change_pct !== null ? Number(q.change_pct) : null,
-        live: q.source === 'alpha_vantage',
-      }))
+      const bySymbol = new Map<string, TapeEntry>()
+      for (const q of quotes.items) {
+        if (bySymbol.has(q.symbol)) continue
+        bySymbol.set(q.symbol, {
+          symbol: q.symbol,
+          close: Number(q.price),
+          changePct: q.change_pct !== null ? Number(q.change_pct) : null,
+          live: q.source === 'alpha_vantage',
+          asOf: q.as_of,
+        })
+      }
+      return TAPE_SYMBOLS.map((symbol) => bySymbol.get(symbol)).filter(
+        (e): e is TapeEntry => e !== undefined,
+      )
     },
   })
 
   return tape ?? []
 }
 
+function TapeItem({ entry }: { entry: TapeEntry }) {
+  const staleDate = !entry.live ? formatTapeDate(entry.asOf) : null
+  return (
+    <span className="flex items-center gap-2 font-mono text-xs whitespace-nowrap">
+      <span className="font-semibold text-ink-100">
+        {entry.symbol}
+        {entry.live ? (
+          <span className="ml-1 text-bull-500" title="Live quote">
+            ●
+          </span>
+        ) : (
+          <span className="ml-1 text-amber-400" title={`Stale seed data${staleDate ? ` · ${staleDate}` : ''}`}>
+            ⏱
+          </span>
+        )}
+      </span>
+      <span className={`tabular-nums ${entry.live ? 'text-ink-200' : 'text-ink-400'}`}>
+        {entry.close.toFixed(2)}
+        {staleDate && <span className="ml-1 text-[10px] text-amber-400/90">({staleDate})</span>}
+      </span>
+      {entry.changePct !== null && (
+        <span
+          className={`tabular-nums ${entry.changePct >= 0 ? 'text-bull-400' : 'text-bear-400'}`}
+        >
+          {entry.changePct >= 0 ? '▲' : '▼'} {Math.abs(entry.changePct).toFixed(2)}%
+        </span>
+      )}
+    </span>
+  )
+}
+
 function TickerTape() {
   const entries = useTickerTape()
   if (entries.length === 0) return null
-  const doubled = [...entries, ...entries]
+  // Duplicate once for seamless CSS marquee — same symbols, not duplicate DB rows.
+  const loop = [...entries, ...entries]
   return (
     <div className="relative overflow-hidden border-b border-ink-700 bg-ink-900/80">
-      <div className="flex w-max animate-ticker gap-8 px-4 py-1.5">
-        {doubled.map((e, i) => (
-          <span key={i} className="flex items-center gap-2 font-mono text-xs whitespace-nowrap">
-            <span className="font-semibold text-ink-100">
-              {e.symbol}
-              {e.live && <span className="ml-1 text-bull-500">●</span>}
-            </span>
-            <span className="tabular-nums text-ink-200">{e.close.toFixed(2)}</span>
-            {e.changePct !== null && (
-              <span
-                className={`tabular-nums ${e.changePct >= 0 ? 'text-bull-400' : 'text-bear-400'}`}
-              >
-                {e.changePct >= 0 ? '▲' : '▼'} {Math.abs(e.changePct).toFixed(2)}%
-              </span>
-            )}
-          </span>
+      <div className="flex w-max animate-ticker gap-8 px-4 py-1.5" aria-label="Market ticker">
+        {loop.map((e, i) => (
+          <TapeItem key={`${e.symbol}-${i < entries.length ? 'a' : 'b'}`} entry={e} />
         ))}
       </div>
     </div>

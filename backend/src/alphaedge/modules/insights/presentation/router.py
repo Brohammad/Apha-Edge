@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from alphaedge.config import settings
 from alphaedge.dependencies import get_current_user_id, get_db_session
 from alphaedge.modules.insights.application.commands import (
     GetInsightQuery,
@@ -22,6 +23,7 @@ from alphaedge.modules.insights.infrastructure.models import (
     SQLAlchemyInsightReportRepository,
     SQLAlchemyInsightRequestRepository,
 )
+from alphaedge.modules.insights.infrastructure.runner import execute_insight
 from alphaedge.modules.insights.infrastructure.tasks import generate_insight_task
 from alphaedge.modules.insights.presentation.schemas import (
     InsightDetailResponse,
@@ -74,6 +76,11 @@ def _to_report(dto: object) -> dict:
 
 async def _enqueue(session: AsyncSession, result: object) -> object:
     request_repo, _ = _repos(session)
+    await session.commit()
+    # In development, run in-process so insight code matches the live API (no stale Celery worker).
+    if settings.app_env == "development":
+        await execute_insight(result.id)
+        return result
     task = generate_insight_task.delay(str(result.id))
     entity = await request_repo.get_by_id(result.id)
     if entity:

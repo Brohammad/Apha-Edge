@@ -148,6 +148,10 @@ export default function InsightDetailPage() {
 
   const { request, report } = data
   const pending = request.status === 'queued' || request.status === 'running'
+  const isLegacyEchoReport =
+    report?.content.includes('## Summary') &&
+    report.content.includes('You are a quantitative trading analyst') &&
+    !report.content.includes('## Generation details')
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -178,6 +182,13 @@ export default function InsightDetailPage() {
 
       {report && (
         <div className="terminal-card animate-rise p-6">
+          {isLegacyEchoReport && (
+            <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+              This is an <strong>outdated report</strong> from an old insight generator (it echoed
+              the prompt). Request a <strong>new insight</strong> from AI Insights — the API now runs
+              in-process in development with OpenAI or the updated mock analyzer.
+            </div>
+          )}
           <InsightMetadata metadata={report.metadata} createdAt={report.created_at} />
           <div className="prose-invert">{renderContent(report.content)}</div>
         </div>
