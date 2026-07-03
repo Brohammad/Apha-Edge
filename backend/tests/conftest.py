@@ -24,6 +24,7 @@ REQUIRED_TABLES = (
     "api_keys",
     "organizations",
     "strategy_listings",
+    "marketplace_purchases",
     "strategy_collab_sessions",
     "broker_connections",
     "orders",

@@ -8,7 +8,9 @@ import {
   LayoutDashboard,
   LogOut,
   ScrollText,
+  ShoppingBag,
   SlidersHorizontal,
+  Users,
   Wallet,
 } from 'lucide-react'
 import MarketClock from './MarketClock'
@@ -23,6 +25,8 @@ const NAV = [
   { to: '/optimizations', label: 'Optimizer', icon: SlidersHorizontal },
   { to: '/portfolios', label: 'Portfolios', icon: Wallet },
   { to: '/orders', label: 'Orders', icon: ScrollText },
+  { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
+  { to: '/organizations', label: 'Organizations', icon: Users },
   { to: '/insights', label: 'AI Insights', icon: BrainCircuit },
 ]
 

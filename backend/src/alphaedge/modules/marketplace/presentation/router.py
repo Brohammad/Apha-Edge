@@ -16,6 +16,7 @@ from alphaedge.modules.marketplace.infrastructure.models import SQLAlchemyStrate
 from alphaedge.modules.organization.infrastructure.models import (
     SQLAlchemyOrganizationMemberRepository,
 )
+from alphaedge.modules.payments.infrastructure.models import SQLAlchemyMarketplacePurchaseRepository
 from alphaedge.modules.strategy.infrastructure.models import (
     SQLAlchemyStrategyRepository,
     SQLAlchemyStrategyVersionRepository,
@@ -106,6 +107,7 @@ async def clone_listing(
     listing_repo = SQLAlchemyStrategyListingRepository(session)
     strategy_repo = SQLAlchemyStrategyRepository(session)
     version_repo = SQLAlchemyStrategyVersionRepository(session)
-    handler = CloneListingHandler(listing_repo, strategy_repo, version_repo)
+    purchase_repo = SQLAlchemyMarketplacePurchaseRepository(session)
+    handler = CloneListingHandler(listing_repo, strategy_repo, version_repo, purchase_repo)
     result = await handler.handle(CloneListingCommand(user_id=user_id, listing_id=listing_id))
     return success_response(result, request_id=getattr(request.state, "request_id", ""))

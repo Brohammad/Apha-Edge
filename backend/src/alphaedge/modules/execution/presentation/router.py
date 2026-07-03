@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from alphaedge.config import settings
 from alphaedge.dependencies import get_current_user_id, get_db_session
 from alphaedge.modules.execution.application.commands import (
     CancelOrderCommand,
@@ -95,6 +96,18 @@ def _to_execution(dto: object) -> dict:
     ).model_dump(mode="json")
 
 
+@broker_connections_router.get("/live-trading/status")
+async def live_trading_status(request: Request):
+    return success_response(
+        {
+            "live_trading_enabled": settings.live_trading_enabled,
+            "stripe_configured": bool(settings.stripe_secret_key),
+            "alpaca_configured": bool(settings.alpaca_api_key and settings.alpaca_api_secret),
+        },
+        request_id=_request_id(request),
+    )
+
+
 @broker_connections_router.get("")
 async def list_broker_connections(
     request: Request,
@@ -170,6 +183,7 @@ async def submit_order(
             limit_price=body.limit_price,
             stop_price=body.stop_price,
             idempotency_key=body.idempotency_key,
+            live_trading_acknowledged=body.live_trading_acknowledged,
         )
     )
 

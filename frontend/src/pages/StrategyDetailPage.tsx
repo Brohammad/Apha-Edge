@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { api } from '../lib/api'
 import { fmtDateTime } from '../lib/format'
+import CollabPanel from '../components/CollabPanel'
 import {
   ErrorNote,
   PageHeader,
@@ -181,6 +182,14 @@ export default function StrategyDetailPage() {
         </div>
 
         <div className="space-y-4">
+          <CollabPanel
+            strategyId={strategyId!}
+            code={code}
+            onRemoteEdit={(source) => {
+              setCode(source)
+              setDirty(true)
+            }}
+          />
           <div className="terminal-card overflow-hidden">
             <div className="flex items-center justify-between border-b border-ink-700 bg-ink-900/60 px-4 py-2">
               <p className="font-mono text-xs text-ink-300">

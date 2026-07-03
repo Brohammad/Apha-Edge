@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "AlphaEdge",
+    "slug": "alphaedge",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0a0e14"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "io.alphaedge.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0a0e14"
+      },
+      "package": "io.alphaedge.app"
+    },
+    "extra": {
+      "apiBaseUrl": "http://localhost:8000/api/v1"
+    }
+  }
+}

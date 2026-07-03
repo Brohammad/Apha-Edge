@@ -5,6 +5,7 @@ from uuid import UUID
 from alphaedge.modules.marketplace.domain.entities import StrategyListing
 from alphaedge.modules.marketplace.domain.repositories import StrategyListingRepository
 from alphaedge.modules.organization.domain.repositories import OrganizationMemberRepository
+from alphaedge.modules.payments.domain.repositories import MarketplacePurchaseRepository
 from alphaedge.modules.strategy.domain.enums import VersionStatus
 from alphaedge.modules.strategy.domain.repositories import (
     StrategyRepository,
@@ -102,15 +103,25 @@ class CloneListingHandler:
         listing_repo: StrategyListingRepository,
         strategy_repo: StrategyRepository,
         version_repo: StrategyVersionRepository,
+        purchase_repo: MarketplacePurchaseRepository | None = None,
     ) -> None:
         self._listing_repo = listing_repo
         self._strategy_repo = strategy_repo
         self._version_repo = version_repo
+        self._purchase_repo = purchase_repo
 
     async def handle(self, command: CloneListingCommand) -> dict[str, str]:
         listing = await self._listing_repo.get_by_id(command.listing_id)
         if not listing or not listing.is_public:
             raise NotFoundError("StrategyListing", str(command.listing_id))
+
+        if (
+            listing.price_cents > 0
+            and listing.seller_user_id != command.user_id
+            and self._purchase_repo is not None
+            and not await self._purchase_repo.has_completed_purchase(listing.id, command.user_id)
+        ):
+            raise ValidationError("Purchase required before cloning this paid listing")
 
         source = await self._strategy_repo.get_by_id(listing.strategy_id)
         if not source or source.deleted_at is not None:

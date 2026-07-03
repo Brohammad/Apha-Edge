@@ -15,6 +15,8 @@ import PortfolioDetailPage from './pages/PortfolioDetailPage'
 import OrdersPage from './pages/OrdersPage'
 import InsightsPage from './pages/InsightsPage'
 import InsightDetailPage from './pages/InsightDetailPage'
+import MarketplacePage from './pages/MarketplacePage'
+import OrganizationsPage from './pages/OrganizationsPage'
 import OAuthCallbackPage from './pages/OAuthCallbackPage'
 
 function Protected({ children }: { children: React.ReactNode }) {
@@ -55,6 +57,8 @@ export default function App() {
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/insights" element={<InsightsPage />} />
         <Route path="/insights/:insightId" element={<InsightDetailPage />} />
+        <Route path="/marketplace" element={<MarketplacePage />} />
+        <Route path="/organizations" element={<OrganizationsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

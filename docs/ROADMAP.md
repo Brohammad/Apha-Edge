@@ -340,4 +340,10 @@ flowchart TD
 | Phase 10 — Production Hardening | ✅ Complete |
 | Phase 11 — Advanced Features | ✅ Complete |
 
-**All roadmap phases complete.** Future work: live trading production rollout, mobile app, strategy marketplace payments.
+**All roadmap phases complete.** Post-roadmap deliverables (Phase 12):
+
+- [x] Marketplace & collaboration frontend
+- [x] Stripe marketplace payments (mock + live Stripe)
+- [x] Live trading production guards & runbook
+- [x] PWA manifest (installable web app)
+- [x] Expo mobile app (`mobile/`)

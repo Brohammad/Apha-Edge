@@ -17,6 +17,7 @@ import {
 import type {
   BrokerConnection,
   Instrument,
+  LiveTradingStatus,
   Order,
   Paginated,
   Portfolio,
@@ -32,6 +33,7 @@ function NewOrderModal({ onClose }: { onClose: () => void }) {
   const [quantity, setQuantity] = useState('10')
   const [limitPrice, setLimitPrice] = useState('')
   const [stopPrice, setStopPrice] = useState('')
+  const [liveAck, setLiveAck] = useState(false)
 
   const { data: portfolios } = useQuery({
     queryKey: ['portfolios', 'all'],
@@ -46,6 +48,9 @@ function NewOrderModal({ onClose }: { onClose: () => void }) {
     queryFn: () => api<Paginated<Instrument>>('/instruments', { query: { limit: 200 } }),
   })
 
+  const selectedConnection = (connections?.items ?? []).find((c) => c.id === connectionId)
+  const isLiveOrder = selectedConnection && !selectedConnection.is_paper
+
   const submit = useMutation({
     mutationFn: () =>
       api<Order>('/orders', {
@@ -59,6 +64,7 @@ function NewOrderModal({ onClose }: { onClose: () => void }) {
           quantity,
           limit_price: orderType === 'limit' ? limitPrice || null : null,
           stop_price: orderType === 'stop' ? stopPrice || null : null,
+          live_trading_acknowledged: isLiveOrder ? liveAck : false,
         },
       }),
     onSuccess: () => {
@@ -208,9 +214,23 @@ function NewOrderModal({ onClose }: { onClose: () => void }) {
             />
           </div>
         )}
+        {isLiveOrder && (
+          <label className="flex items-start gap-2 rounded-lg border border-bear-500/40 bg-bear-500/10 p-3 text-sm text-bear-200">
+            <input
+              type="checkbox"
+              checked={liveAck}
+              onChange={(e) => setLiveAck(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              I understand this order routes to a <strong>live</strong> broker account with real
+              capital at risk.
+            </span>
+          </label>
+        )}
         <button
           type="submit"
-          disabled={submit.isPending}
+          disabled={submit.isPending || (isLiveOrder && !liveAck)}
           className={`${side === 'buy' ? btnPrimary : btnBear} w-full`}
         >
           <Send size={15} />
@@ -223,12 +243,40 @@ function NewOrderModal({ onClose }: { onClose: () => void }) {
 
 function BrokerConnections() {
   const qc = useQueryClient()
+  const [showAlpaca, setShowAlpaca] = useState(false)
+  const [apiKey, setApiKey] = useState('')
+  const [apiSecret, setApiSecret] = useState('')
+  const [isPaper, setIsPaper] = useState(true)
+
+  const { data: liveStatus } = useQuery({
+    queryKey: ['live-trading-status'],
+    queryFn: () => api<LiveTradingStatus>('/broker-connections/live-trading/status', { auth: false }),
+  })
+
   const { data } = useQuery({
     queryKey: ['broker-connections'],
     queryFn: () => api<Paginated<BrokerConnection>>('/broker-connections'),
   })
 
   const create = useMutation({
+    mutationFn: () =>
+      api<BrokerConnection>('/broker-connections', {
+        method: 'POST',
+        body: {
+          broker_name: 'alpaca',
+          is_paper: isPaper,
+          credentials: { api_key: apiKey, api_secret: apiSecret },
+        },
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['broker-connections'] })
+      setShowAlpaca(false)
+      setApiKey('')
+      setApiSecret('')
+    },
+  })
+
+  const createPaper = useMutation({
     mutationFn: () =>
       api<BrokerConnection>('/broker-connections', {
         method: 'POST',
@@ -245,18 +293,40 @@ function BrokerConnections() {
         <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-ink-300">
           <Link2 size={13} /> Broker connections
         </p>
-        <button
-          type="button"
-          className="text-xs font-medium text-volt-400 hover:text-volt-300 disabled:opacity-50"
-          disabled={create.isPending}
-          onClick={() => create.mutate()}
-        >
-          + Add paper broker
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="text-xs font-medium text-volt-400 hover:text-volt-300 disabled:opacity-50"
+            disabled={createPaper.isPending}
+            onClick={() => createPaper.mutate()}
+          >
+            + Paper
+          </button>
+          <button
+            type="button"
+            className="text-xs font-medium text-gold-400 hover:text-gold-300"
+            onClick={() => setShowAlpaca(true)}
+          >
+            + Alpaca
+          </button>
+        </div>
       </div>
+
+      {liveStatus && (
+        <div
+          className={`mb-3 rounded-lg border px-3 py-2 text-xs ${
+            liveStatus.live_trading_enabled
+              ? 'border-bull-500/30 bg-bull-500/10 text-bull-300'
+              : 'border-gold-500/30 bg-gold-500/10 text-gold-300'
+          }`}
+        >
+          Live trading: {liveStatus.live_trading_enabled ? 'ENABLED' : 'disabled (paper only)'}
+        </div>
+      )}
+
       {items.length === 0 ? (
         <p className="text-sm text-ink-400">
-          No connections — add the paper broker to start routing orders.
+          No connections — add paper or Alpaca to start routing orders.
         </p>
       ) : (
         <ul className="space-y-2">
@@ -272,15 +342,82 @@ function BrokerConnections() {
                 <span className="font-mono text-sm font-semibold uppercase text-ink-100">
                   {c.broker_name}
                 </span>
-                {c.is_paper && (
+                {c.is_paper ? (
                   <span className="rounded border border-gold-500/30 bg-gold-500/10 px-1.5 py-0.5 font-mono text-[10px] uppercase text-gold-300">
                     paper
+                  </span>
+                ) : (
+                  <span className="rounded border border-bear-500/30 bg-bear-500/10 px-1.5 py-0.5 font-mono text-[10px] uppercase text-bear-300">
+                    live
                   </span>
                 )}
               </div>
             </li>
           ))}
         </ul>
+      )}
+
+      {showAlpaca && (
+        <Modal title="Connect Alpaca" onClose={() => setShowAlpaca(false)}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              create.mutate()
+            }}
+            className="mt-3 space-y-3"
+          >
+            {create.isError && (
+              <ErrorNote
+                message={create.error instanceof Error ? create.error.message : 'Connect failed'}
+              />
+            )}
+            <div className="flex gap-2">
+              {([true, false] as const).map((paper) => (
+                <button
+                  key={String(paper)}
+                  type="button"
+                  onClick={() => setIsPaper(paper)}
+                  className={`flex-1 rounded-lg border px-3 py-2 font-mono text-xs uppercase ${
+                    isPaper === paper
+                      ? paper
+                        ? 'border-gold-500 bg-gold-500/15 text-gold-300'
+                        : 'border-bear-500 bg-bear-500/15 text-bear-300'
+                      : 'border-ink-600 text-ink-400'
+                  }`}
+                >
+                  {paper ? 'Paper' : 'Live'}
+                </button>
+              ))}
+            </div>
+            {!isPaper && !liveStatus?.live_trading_enabled && (
+              <p className="text-xs text-bear-400">
+                Live trading is disabled on this server. Use paper mode or enable LIVE_TRADING_ENABLED.
+              </p>
+            )}
+            <input
+              required
+              placeholder="API key"
+              className={inputCls}
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+            />
+            <input
+              required
+              type="password"
+              placeholder="API secret"
+              className={inputCls}
+              value={apiSecret}
+              onChange={(e) => setApiSecret(e.target.value)}
+            />
+            <button
+              type="submit"
+              disabled={create.isPending || (!isPaper && !liveStatus?.live_trading_enabled)}
+              className={`${btnPrimary} w-full`}
+            >
+              {create.isPending ? 'Connecting…' : 'Connect Alpaca'}
+            </button>
+          </form>
+        </Modal>
       )}
     </div>
   )

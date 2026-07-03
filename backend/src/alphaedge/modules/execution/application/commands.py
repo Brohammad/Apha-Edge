@@ -34,6 +34,7 @@ class SubmitOrderCommand:
     limit_price: str | None = None
     stop_price: str | None = None
     idempotency_key: str | None = None
+    live_trading_acknowledged: bool = False
 
 
 @dataclass(frozen=True)

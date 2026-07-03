@@ -353,3 +353,43 @@ export interface InsightDetail {
   request: InsightRequest
   report: InsightReport | null
 }
+
+// -- Organizations & marketplace ----------------------------------------
+
+export interface Organization {
+  id: string
+  name: string
+  slug: string
+  owner_id: string
+  plan_tier: string
+  created_at: string
+}
+
+export interface StrategyListing {
+  id: string
+  strategy_id: string
+  organization_id: string
+  title: string
+  description: string | null
+  price_cents: number
+  clone_count: number
+  created_at: string
+}
+
+export interface CheckoutSession {
+  session_id: string
+  checkout_url: string
+  already_purchased: boolean
+  mock: boolean
+}
+
+export interface CollabSessionInfo {
+  session_id: string
+  strategy_id: string
+}
+
+export interface LiveTradingStatus {
+  live_trading_enabled: boolean
+  stripe_configured: boolean
+  alpaca_configured: boolean
+}

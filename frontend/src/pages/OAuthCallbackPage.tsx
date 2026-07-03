@@ -10,7 +10,7 @@ export default function OAuthCallbackPage() {
     const access = params.get('access_token')
     const refresh = params.get('refresh_token')
     if (access && refresh) {
-      saveTokens({ access_token: access, refresh_token: refresh })
+      saveTokens({ access_token: access, refresh_token: refresh, token_type: 'bearer' })
       navigate('/', { replace: true })
     } else {
       navigate('/login', { replace: true })

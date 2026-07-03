@@ -28,6 +28,7 @@ from alphaedge.modules.market_data.presentation.ws import ws_router
 from alphaedge.modules.marketplace.presentation.router import marketplace_router
 from alphaedge.modules.optimization.presentation.router import optimization_router
 from alphaedge.modules.organization.presentation.router import organizations_router
+from alphaedge.modules.payments.presentation.router import payments_router
 from alphaedge.modules.portfolio.presentation.router import portfolios_router
 from alphaedge.modules.risk.presentation.router import risk_router
 from alphaedge.modules.strategy.presentation.router import (
@@ -153,6 +154,7 @@ def register_routes(app: FastAPI) -> None:
     api_v1.include_router(auth_router)
     api_v1.include_router(organizations_router)
     api_v1.include_router(marketplace_router)
+    api_v1.include_router(payments_router)
     api_v1.include_router(collaboration_router)
     api_v1.include_router(instruments_router)
     api_v1.include_router(market_data_router)

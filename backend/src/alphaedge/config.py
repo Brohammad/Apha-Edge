@@ -63,6 +63,14 @@ class Settings(BaseSettings):
     # Rate limiting (Redis sliding window)
     rate_limit_enabled: bool = True
 
+    # Live trading (disabled by default — must be explicitly enabled in production)
+    live_trading_enabled: bool = False
+
+    # Stripe marketplace payments
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_publishable_key: str = ""
+
     @property
     def is_testing(self) -> bool:
         return self.app_env in ("test", "testing")

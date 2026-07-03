@@ -1,13 +1,7 @@
 from decimal import Decimal
 from uuid import UUID
 
-from alphaedge.modules.execution.domain.repositories import (
-    BrokerConnectionRepository,
-    ExecutionRepository,
-    OrderEventRepository,
-    OrderRepository,
-)
-
+from alphaedge.config import settings
 from alphaedge.modules.execution.application.commands import (
     BrokerConnectionDTO,
     CancelOrderCommand,
@@ -23,6 +17,12 @@ from alphaedge.modules.execution.application.commands import (
 )
 from alphaedge.modules.execution.domain.entities import BrokerConnection, Order
 from alphaedge.modules.execution.domain.enums import BrokerName, OrderEventType, OrderType
+from alphaedge.modules.execution.domain.repositories import (
+    BrokerConnectionRepository,
+    ExecutionRepository,
+    OrderEventRepository,
+    OrderRepository,
+)
 from alphaedge.modules.execution.domain.services import record_event
 from alphaedge.modules.execution.infrastructure.models import get_broker
 from alphaedge.modules.market_data.domain.repositories import InstrumentRepository
@@ -46,6 +46,11 @@ class CreateBrokerConnectionHandler:
             credentials=command.credentials,
             is_paper=command.is_paper,
         )
+        if not connection.is_paper and not settings.live_trading_enabled:
+            raise ValidationError(
+                "Live trading is disabled on this deployment. "
+                "Set LIVE_TRADING_ENABLED=true after completing the production checklist."
+            )
         saved = await self._repo.save(connection)
         return BrokerConnectionDTO.from_entity(saved)
 
@@ -105,6 +110,16 @@ class SubmitOrderHandler:
             raise NotFoundError("BrokerConnection", str(command.broker_connection_id))
         if connection.user_id != command.user_id:
             raise AuthorizationError("You do not own this broker connection")
+
+        if not connection.is_paper:
+            if not settings.live_trading_enabled:
+                raise ValidationError("Live trading is disabled on this deployment")
+            if not command.live_trading_acknowledged:
+                raise ValidationError(
+                    "Live orders require live_trading_acknowledged=true in the request body"
+                )
+            if portfolio.is_paper:
+                raise ValidationError("Cannot route live orders through a paper portfolio")
 
         instrument = await self._instrument_repo.get_by_id(command.instrument_id)
         if not instrument:
