@@ -13,13 +13,19 @@ from alphaedge.modules.insights.infrastructure.models import (
     SQLAlchemyInsightRequestRepository,
 )
 from alphaedge.modules.insights.infrastructure.openai_llm import OpenAILLMProvider
+from alphaedge.shared.domain.exceptions import ValidationError
 from alphaedge.shared.infrastructure.database import async_session_factory
 
 
 def _get_llm_provider() -> tuple[str, object]:
-    if settings.llm_provider == "openai" and settings.openai_api_key:
-        return "openai", OpenAILLMProvider()
-    return "mock", MockLLMProvider()
+    if settings.llm_provider == "mock":
+        return "mock", MockLLMProvider()
+    if not settings.openai_api_key:
+        raise ValidationError(
+            "OPENAI_API_KEY is required when LLM_PROVIDER=openai. "
+            "Set your API key in .env or use LLM_PROVIDER=mock for offline mode."
+        )
+    return "openai", OpenAILLMProvider()
 
 
 async def execute_insight(request_id: UUID) -> None:
@@ -60,6 +66,7 @@ async def execute_insight(request_id: UUID) -> None:
                 prompt_version=PROMPT_VERSION,
                 prompt_tokens=response.prompt_tokens,
                 completion_tokens=response.completion_tokens,
+                openai_model_configured=settings.openai_model,
                 llm_provider_configured=settings.llm_provider,
             )
 
@@ -69,6 +76,8 @@ async def execute_insight(request_id: UUID) -> None:
                 metadata={
                     "llm_provider": response.provider,
                     "llm_provider_configured": settings.llm_provider,
+                    "chatgpt_model": response.model,
+                    "openai_model_configured": settings.openai_model,
                     "llm_model": response.model,
                     "model": response.model,
                     "prompt_version": PROMPT_VERSION,

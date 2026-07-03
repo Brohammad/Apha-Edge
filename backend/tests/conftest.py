@@ -47,6 +47,7 @@ def _disable_rate_limit_for_tests() -> None:
 
     settings.rate_limit_enabled = False
     settings.app_env = "test"
+    settings.llm_provider = "mock"
 
 
 @pytest.fixture(scope="session", autouse=True)

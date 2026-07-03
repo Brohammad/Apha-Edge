@@ -21,16 +21,26 @@ function metaString(metadata: Record<string, unknown>, key: string): string | nu
 
 function InsightMetadata({ metadata, createdAt }: { metadata: Record<string, unknown>; createdAt: string }) {
   const provider = metaString(metadata, 'llm_provider')
-  const configured = metaString(metadata, 'llm_provider_configured')
-  const model = metaString(metadata, 'llm_model') ?? metaString(metadata, 'model')
+  const model =
+    metaString(metadata, 'chatgpt_model') ??
+    metaString(metadata, 'llm_model') ??
+    metaString(metadata, 'model')
+  const configuredModel = metaString(metadata, 'openai_model_configured')
   const promptVersion = metaString(metadata, 'prompt_version')
   const totalTokens = metaString(metadata, 'total_tokens')
+  const isOpenAi = provider === 'openai'
   const isMock = provider === 'mock'
-  const configuredOpenAiButMock = configured === 'openai' && provider === 'mock'
+
+  const providerLabel = isOpenAi ? 'OpenAI' : provider === 'mock' ? 'Mock (local)' : provider
+  const modelLabel = isOpenAi
+    ? `ChatGPT model: ${model ?? configuredModel ?? 'unknown'}`
+    : model
+      ? `Model: ${model}`
+      : null
 
   const summary = [
-    provider && `LLM: ${provider}`,
-    model && `Model: ${model}`,
+    providerLabel && `Provider: ${providerLabel}`,
+    modelLabel,
     promptVersion && `Prompt: ${promptVersion}`,
     totalTokens && `Tokens: ${totalTokens}`,
     `Generated: ${fmtDateTime(createdAt)}`,
@@ -40,15 +50,25 @@ function InsightMetadata({ metadata, createdAt }: { metadata: Record<string, unk
 
   return (
     <div className="mb-4 space-y-3">
-      <p className="rounded-lg border border-ink-700/80 bg-ink-900/50 px-3 py-2 font-mono text-[11px] text-ink-300">
+      <p
+        className={`rounded-lg border px-3 py-2 font-mono text-[11px] ${
+          isOpenAi
+            ? 'border-volt-500/30 bg-volt-500/10 text-volt-200'
+            : 'border-ink-700/80 bg-ink-900/50 text-ink-300'
+        }`}
+      >
         {summary}
       </p>
       {isMock && (
         <p className="text-xs text-amber-200/90">
-          Demo mode — set <code className="text-amber-100">LLM_PROVIDER=openai</code>,{' '}
-          <code className="text-amber-100">OPENAI_API_KEY</code>, and optionally{' '}
-          <code className="text-amber-100">OPENAI_MODEL</code>
-          {configuredOpenAiButMock ? ' (API key missing — fell back to mock)' : ''} for live AI.
+          Offline mock mode — set <code className="text-amber-100">LLM_PROVIDER=openai</code> and{' '}
+          <code className="text-amber-100">OPENAI_API_KEY</code> for live ChatGPT insights.
+        </p>
+      )}
+      {isOpenAi && configuredModel && model && configuredModel !== model && (
+        <p className="text-xs text-ink-400">
+          Configured <code className="text-ink-200">{configuredModel}</code> · API returned{' '}
+          <code className="text-ink-200">{model}</code>
         </p>
       )}
     </div>

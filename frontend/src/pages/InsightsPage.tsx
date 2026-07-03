@@ -164,7 +164,7 @@ export default function InsightsPage() {
     <div className="mx-auto max-w-6xl">
       <PageHeader
         title="AI Insights"
-        sub="LLM-generated strategy explanations, performance reports and risk narratives."
+        sub="OpenAI-powered strategy explanations, performance reports and risk narratives."
         actions={
           <button type="button" className={btnPrimary} onClick={() => setShowCreate(true)}>
             <Plus size={16} /> Request insight

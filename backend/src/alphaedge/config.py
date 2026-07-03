@@ -54,7 +54,7 @@ class Settings(BaseSettings):
 
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
-    llm_provider: Literal["mock", "openai"] = "mock"
+    llm_provider: Literal["mock", "openai"] = "openai"
 
     # OAuth (Google, GitHub)
     google_oauth_client_id: str = ""
