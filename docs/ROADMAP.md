@@ -347,3 +347,118 @@ flowchart TD
 - [x] Live trading production guards & runbook
 - [x] PWA manifest (installable web app)
 - [x] Expo mobile app (`mobile/`)
+
+---
+
+## Phase 13 — Strategy Depth & Live Execution
+
+**Status:** Planned
+
+**Goal:** Close the gap between architecture docs and runtime behavior. Today DSL strategies run end-to-end in backtests (Python or C++), but Python strategies only validate — they never execute. Live/paper trading is order-driven, not strategy-driven. The DSL is limited to crossover/crossunder between two indicators.
+
+**Why now:** Phases 0–12 delivered the platform shell. Phase 13 makes the strategy engine the product it was designed to be.
+
+### 13a — Python Strategy Runtime (P0)
+
+**Problem:** `BacktestEngine._build_executor` raises for Python strategies; the UI still lets users create them.
+
+**Deliverables:**
+- [ ] `PythonStrategyExecutor` — load user class via restricted import sandbox, instantiate `StrategyBase` subclass, call `on_init` / `on_bar` / `on_stop`
+- [ ] Wire executor into `BacktestEngine` (Python path only; C++ remains DSL-only)
+- [ ] Shared indicator helpers exposed on `StrategyContext` (reuse `INDICATOR_REGISTRY`)
+- [ ] Unit tests: golden-cross equivalent in Python, import-guard rejection cases
+- [ ] Frontend: disable backtest button for Python strategies until runtime ships, or show clear banner after 13a ships
+
+**Exit criteria:** A Python strategy with `on_bar` returning BUY/SELL backtests successfully and produces trades.
+
+### 13b — DSL Expressiveness (P1)
+
+**Problem:** Only `crossover(a, b)` and `crossunder(a, b)` are supported. No thresholds (`rsi(14) < 30`), no AND/OR, no stop-loss/take-profit metadata on signals.
+
+**Deliverables:**
+- [ ] Comparison conditions: `>`, `<`, `>=`, `<=`, `==` between indicator refs and numeric literals or parameters
+- [ ] Boolean composition: `all(...)`, `any(...)` for grouped conditions
+- [ ] Optional signal metadata: `strength`, `stop_loss_pct`, `take_profit_pct` (stored on `Signal`, honored by engine)
+- [ ] Extend `DSLStrategyExecutor` and C++ bridge with same semantics
+- [ ] Parser/validator tests + example templates (RSI oversold, MACD + SMA filter)
+- [ ] Frontend: update golden-cross template docs; add RSI/mean-reversion starter template
+
+**Exit criteria:** RSI oversold/overbought and multi-condition strategies validate, backtest, and match Python-path results.
+
+### 13c — Live Strategy Evaluation (P1)
+
+**Problem:** Architecture describes `BarIngested → Strategy (live signal eval) → Order`, but execution only accepts manual/API orders.
+
+**Deliverables:**
+- [ ] `StrategyDeployment` entity: links `strategy_version_id`, `portfolio_id`, `broker_connection_id`, instruments, sizing config, active flag
+- [ ] Celery beat or bar-ingestion hook: on new bar, run executor → emit `SignalGenerated` domain event
+- [ ] `SignalToOrderHandler`: translate BUY/SELL into `SubmitOrder` (respect risk limits, long-only vs short flag)
+- [ ] API: deploy/pause/list deployments; audit log of signal → order decisions
+- [ ] Frontend: "Deploy to paper" flow from validated strategy version
+- [ ] Integration test: mock bar → signal → paper order filled
+
+**Exit criteria:** A deployed DSL strategy on paper broker auto-places orders when bars arrive.
+
+### 13d — Strategy Authoring UX (P2)
+
+**Problem:** Parameters live in JSONB but the editor only exposes `source_code`. Validation-before-backtest is enforced server-side but easy to miss in the UI.
+
+**Deliverables:**
+- [ ] Parameters panel on `StrategyDetailPage` (key/value editor synced with YAML `parameters` block or version JSONB)
+- [ ] Inline validation errors in editor (parse API errors with line hints)
+- [ ] "Validate & Backtest" one-click flow when version is dirty
+- [ ] Indicator catalog sidebar (from `GET /indicators`) with insert snippets
+- [ ] Python strategy: starter template with `StrategyBase` skeleton and commented examples
+
+**Exit criteria:** User can edit parameters without touching raw YAML; unvalidated versions show blocking UI before backtest submit.
+
+### 13e — Backtest Fidelity (P2)
+
+**Problem:** Long-only simulation; HOLD is a no-op; short selling documented in architecture but not implemented.
+
+**Deliverables:**
+- [ ] `allow_short` flag on `BacktestConfig` (default false for backward compatibility)
+- [ ] Engine: SELL opens short when flat and shorts allowed; BUY covers short
+- [ ] Metrics: separate long/short trade stats when enabled
+- [ ] Document behavior in README and API schema
+
+**Exit criteria:** Short-enabled backtest produces short positions and correct P&L.
+
+### 13f — Documentation Sync (P3)
+
+**Problem:** `ARCHITECTURE.md` still states no implementation exists; roadmap marked everything complete while runtime gaps remain.
+
+**Deliverables:**
+- [ ] Update `ARCHITECTURE.md` §9 implementation status and live-signal flow
+- [ ] Add `docs/STRATEGY_GUIDE.md` — DSL reference, Python runtime, deployment lifecycle
+- [ ] README "Known limitations" section pointing to Phase 13 items until complete
+
+**Exit criteria:** New developer can read docs and understand what works vs what is planned without reading source.
+
+---
+
+### Phase 13 Dependency Graph
+
+```mermaid
+flowchart TD
+    P13a[13a: Python Runtime] --> P13c[13c: Live Evaluation]
+    P13b[13b: DSL Expressiveness] --> P13c
+    P13a --> P13d[13d: Authoring UX]
+    P13b --> P13d
+    P13c --> P13e[13e: Backtest Fidelity]
+    P13d --> P13f[13f: Docs Sync]
+    P13e --> P13f
+```
+
+### Phase 13 Priority Summary
+
+| Track | Priority | Effort | User impact |
+|-------|----------|--------|-------------|
+| 13a Python runtime | P0 | Medium | Unblocks half the strategy editor |
+| 13b DSL expressiveness | P1 | Medium | Real-world rule authoring |
+| 13c Live evaluation | P1 | Large | Paper trading that actually trades |
+| 13d Authoring UX | P2 | Small–Medium | Fewer validate/backtest mistakes |
+| 13e Short selling | P2 | Medium | Institutional realism |
+| 13f Docs sync | P3 | Small | Onboarding clarity |
+
+**Approval is required before starting each sub-phase.**
