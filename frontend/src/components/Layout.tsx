@@ -38,6 +38,7 @@ interface TapeEntry {
   changePct: number | null
   live: boolean
   asOf: string | null
+  fallbackReason: string | null
 }
 
 function formatTapeDate(iso: string | null): string | null {
@@ -47,11 +48,11 @@ function formatTapeDate(iso: string | null): string | null {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function useTickerTape(): TapeEntry[] {
-  const { data: tape } = useQuery({
+function useTapeQuotes() {
+  return useQuery({
     queryKey: ['tape-quotes', TAPE_SYMBOLS.join(',')],
-    refetchInterval: 60_000,
-    staleTime: 30_000,
+    refetchInterval: 15 * 60_000,
+    staleTime: 15 * 60_000,
     queryFn: async () => {
       const quotes = await api<{ items: Quote[] }>('/market-data/quotes', {
         query: { symbols: TAPE_SYMBOLS.join(',') },
@@ -65,29 +66,36 @@ function useTickerTape(): TapeEntry[] {
           changePct: q.change_pct !== null ? Number(q.change_pct) : null,
           live: q.source === 'alpha_vantage',
           asOf: q.as_of,
+          fallbackReason: q.fallback_reason ?? null,
         })
       }
-      return TAPE_SYMBOLS.map((symbol) => bySymbol.get(symbol)).filter(
+      const entries = TAPE_SYMBOLS.map((symbol) => bySymbol.get(symbol)).filter(
         (e): e is TapeEntry => e !== undefined,
       )
+      const rateLimited = quotes.items.some((q) => {
+        const reason = (q.fallback_reason ?? '').toLowerCase()
+        return reason.includes('rate limit') || reason.includes('25 requests per day')
+      })
+      return { entries, rateLimited }
     },
   })
-
-  return tape ?? []
 }
 
 function TapeItem({ entry }: { entry: TapeEntry }) {
   const staleDate = !entry.live ? formatTapeDate(entry.asOf) : null
+  const staleTitle =
+    entry.fallbackReason ??
+    (staleDate ? `Stored bar from ${staleDate}` : 'Stored seed data — not a live quote')
   return (
     <span className="flex items-center gap-2 font-mono text-xs whitespace-nowrap">
       <span className="font-semibold text-ink-100">
         {entry.symbol}
         {entry.live ? (
-          <span className="ml-1 text-bull-500" title="Live quote">
+          <span className="ml-1 text-bull-500" title="Live quote (Alpha Vantage)">
             ●
           </span>
         ) : (
-          <span className="ml-1 text-amber-400" title={`Stale seed data${staleDate ? ` · ${staleDate}` : ''}`}>
+          <span className="ml-1 text-amber-400" title={staleTitle}>
             ⏱
           </span>
         )}
@@ -108,12 +116,17 @@ function TapeItem({ entry }: { entry: TapeEntry }) {
 }
 
 function TickerTape() {
-  const entries = useTickerTape()
+  const { data } = useTapeQuotes()
+  const entries = data?.entries ?? []
   if (entries.length === 0) return null
-  // Duplicate once for seamless CSS marquee — same symbols, not duplicate DB rows.
   const loop = [...entries, ...entries]
   return (
     <div className="relative overflow-hidden border-b border-ink-700 bg-ink-900/80">
+      {data?.rateLimited && (
+        <div className="border-b border-amber-500/20 bg-amber-500/10 px-4 py-1 text-center font-mono text-[10px] text-amber-200">
+          Alpha Vantage daily limit reached (25/day free) — showing stored prices until quota resets
+        </div>
+      )}
       <div className="flex w-max animate-ticker gap-8 px-4 py-1.5" aria-label="Market ticker">
         {loop.map((e, i) => (
           <TapeItem key={`${e.symbol}-${i < entries.length ? 'a' : 'b'}`} entry={e} />

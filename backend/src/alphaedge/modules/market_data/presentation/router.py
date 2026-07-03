@@ -235,6 +235,7 @@ async def get_quotes(
                     change_pct=str(q.change_pct) if q.change_pct is not None else None,
                     as_of=q.as_of,
                     source=q.source,
+                    fallback_reason=q.fallback_reason,
                 ).model_dump()
                 for q in quotes
             ]

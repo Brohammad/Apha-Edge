@@ -66,3 +66,4 @@ class QuoteResponse(BaseModel):
     change_pct: str | None
     as_of: datetime
     source: str
+    fallback_reason: str | None = None

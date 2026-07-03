@@ -13,7 +13,7 @@ from alphaedge.modules.market_data.domain.enums import Timeframe
 from alphaedge.modules.market_data.domain.repositories import BarRepository, InstrumentRepository
 from alphaedge.shared.domain.exceptions import ValidationError
 
-QUOTE_CACHE_TTL = 300  # 5 min — respects Alpha Vantage rate limits
+QUOTE_CACHE_TTL = 900  # 15 min — free Alpha Vantage tier allows only 25 requests/day
 
 
 @dataclass(frozen=True)
@@ -23,6 +23,7 @@ class QuoteSnapshot:
     change_pct: Decimal | None
     as_of: datetime
     source: str
+    fallback_reason: str | None = None
 
 
 class AlphaVantageQuoteClient:
@@ -46,6 +47,8 @@ class AlphaVantageQuoteClient:
             raise ValidationError(payload["Error Message"])
         if "Note" in payload:
             raise ValidationError(f"Alpha Vantage rate limit: {payload['Note']}")
+        if "Information" in payload:
+            raise ValidationError(payload["Information"])
 
         quote = payload.get("Global Quote") or {}
         price_raw = quote.get("05. price")
@@ -82,6 +85,7 @@ class QuoteCache:
             change_pct=Decimal(data["change_pct"]) if data.get("change_pct") is not None else None,
             as_of=datetime.fromisoformat(data["as_of"]),
             source=data["source"],
+            fallback_reason=data.get("fallback_reason"),
         )
 
     async def set(self, quote: QuoteSnapshot) -> None:
@@ -93,6 +97,7 @@ class QuoteCache:
             "change_pct": str(quote.change_pct) if quote.change_pct is not None else None,
             "as_of": quote.as_of.isoformat(),
             "source": quote.source,
+            "fallback_reason": quote.fallback_reason,
         }
         await self._redis.set(self._key(quote.symbol), json.dumps(payload), ex=QUOTE_CACHE_TTL)
 
@@ -134,10 +139,18 @@ class QuoteService:
             if self._cache:
                 await self._cache.set(quote)
             return quote
-        except ValidationError:
-            pass
-
-        return await self._from_database(sym)
+        except ValidationError as exc:
+            db_quote = await self._from_database(sym)
+            if db_quote:
+                return QuoteSnapshot(
+                    symbol=db_quote.symbol,
+                    price=db_quote.price,
+                    change_pct=db_quote.change_pct,
+                    as_of=db_quote.as_of,
+                    source="database",
+                    fallback_reason=str(exc),
+                )
+            return None
 
     async def _from_database(self, symbol: str) -> QuoteSnapshot | None:
         instrument = await self._instrument_repo.get_by_symbol(symbol)

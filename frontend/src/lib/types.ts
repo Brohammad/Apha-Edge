@@ -54,6 +54,7 @@ export interface Quote {
   change_pct: string | null
   as_of: string
   source: string
+  fallback_reason?: string | null
 }
 
 export interface Bar {
