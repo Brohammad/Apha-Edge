@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from alphaedge.dependencies import get_current_user_id, get_db_session
+from alphaedge.dependencies import get_current_user_id, get_db_session, require_admin
 from alphaedge.modules.market_data.application.commands import (
     CreateInstrumentCommand,
     GetBarsQuery,
@@ -32,11 +32,13 @@ from alphaedge.modules.market_data.infrastructure.models import (
     SQLAlchemyIngestionJobRepository,
     SQLAlchemyInstrumentRepository,
 )
+from alphaedge.modules.market_data.infrastructure.quotes import QuoteCache, QuoteService
 from alphaedge.modules.market_data.presentation.schemas import (
     BarResponse,
     CreateInstrumentRequest,
     IngestionJobResponse,
     InstrumentResponse,
+    QuoteResponse,
     TriggerIngestionRequest,
 )
 from alphaedge.shared.infrastructure.redis import get_redis
@@ -135,7 +137,7 @@ async def create_instrument(
     body: CreateInstrumentRequest,
     request: Request,
     session: AsyncSession = Depends(get_db_session),
-    _user_id: UUID = Depends(get_current_user_id),
+    _admin: object = Depends(require_admin),
 ):
     instrument_repo, _, _ = _repos(session)
     handler = CreateInstrumentHandler(instrument_repo)
@@ -212,12 +214,41 @@ async def get_latest_bar(
     return success_response(_to_bar(result), request_id=_request_id(request))
 
 
+@market_data_router.get("/quotes")
+async def get_quotes(
+    request: Request,
+    symbols: str = Query(description="Comma-separated symbols, e.g. AAPL,MSFT"),
+    session: AsyncSession = Depends(get_db_session),
+    _user_id: UUID = Depends(get_current_user_id),
+):
+    instrument_repo, bar_repo, _ = _repos(session)
+    redis = await get_redis()
+    service = QuoteService(instrument_repo, bar_repo, QuoteCache(redis))
+    symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+    quotes = await service.get_quotes(symbol_list)
+    return success_response(
+        {
+            "items": [
+                QuoteResponse(
+                    symbol=q.symbol,
+                    price=str(q.price),
+                    change_pct=str(q.change_pct) if q.change_pct is not None else None,
+                    as_of=q.as_of,
+                    source=q.source,
+                ).model_dump()
+                for q in quotes
+            ]
+        },
+        request_id=_request_id(request),
+    )
+
+
 @market_data_router.post("/ingest", status_code=202)
 async def trigger_ingestion(
     body: TriggerIngestionRequest,
     request: Request,
     session: AsyncSession = Depends(get_db_session),
-    _user_id: UUID = Depends(get_current_user_id),
+    _admin: object = Depends(require_admin),
 ):
     _, _, job_repo = _repos(session)
     handler = TriggerIngestionHandler(job_repo)

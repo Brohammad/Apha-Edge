@@ -81,6 +81,11 @@ class CreateApiKeyResult:
 
 
 @dataclass(frozen=True)
+class VerifyEmailCommand:
+    token: str
+
+
+@dataclass(frozen=True)
 class TokenPair:
     access_token: str
     refresh_token: str
@@ -94,6 +99,7 @@ class UserDTO:
     display_name: str
     roles: list[str]
     is_active: bool
+    email_verified: bool
 
     @staticmethod
     def from_entity(user: User) -> "UserDTO":
@@ -103,4 +109,5 @@ class UserDTO:
             display_name=user.display_name,
             roles=[r.name.value for r in user.roles],
             is_active=user.is_active,
+            email_verified=user.email_verified,
         )

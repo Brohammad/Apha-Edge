@@ -42,6 +42,8 @@ class UserModel(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     display_name: Mapped[str] = mapped_column(String(100), nullable=False)
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    email_verified: Mapped[bool] = mapped_column(default=False, nullable=False)
+    email_verification_token_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     rate_limit_tier: Mapped[str] = mapped_column(String(20), default=RateLimitTier.STANDARD.value)
 
     roles: Mapped[list["RoleModel"]] = relationship(secondary=user_roles_table, lazy="selectin")
@@ -99,6 +101,8 @@ def _user_to_entity(model: UserModel) -> User:
         password_hash=model.password_hash,
         display_name=model.display_name,
         is_active=model.is_active,
+        email_verified=model.email_verified,
+        email_verification_token_hash=model.email_verification_token_hash,
         rate_limit_tier=RateLimitTier(model.rate_limit_tier),
         roles=[_role_to_entity(r) for r in model.roles],
         created_at=model.created_at,
@@ -122,6 +126,12 @@ class SQLAlchemyUserRepository(UserRepository):
         model = result.scalar_one_or_none()
         return _user_to_entity(model) if model else None
 
+    async def get_by_verification_token_hash(self, token_hash: str) -> User | None:
+        stmt = select(UserModel).where(UserModel.email_verification_token_hash == token_hash)
+        result = await self._session.execute(stmt)
+        model = result.scalar_one_or_none()
+        return _user_to_entity(model) if model else None
+
     async def save(self, user: User) -> User:
         model = UserModel(
             id=user.id,
@@ -129,10 +139,28 @@ class SQLAlchemyUserRepository(UserRepository):
             password_hash=user.password_hash,
             display_name=user.display_name,
             is_active=user.is_active,
+            email_verified=user.email_verified,
+            email_verification_token_hash=user.email_verification_token_hash,
+            rate_limit_tier=user.rate_limit_tier.value,
         )
         self._session.add(model)
         await self._session.flush()
         return user
+
+    async def update(self, user: User) -> User:
+        from datetime import UTC, datetime
+
+        model = await self._session.get(UserModel, user.id)
+        if not model:
+            raise ValueError(f"User {user.id} not found")
+        model.display_name = user.display_name
+        model.is_active = user.is_active
+        model.email_verified = user.email_verified
+        model.email_verification_token_hash = user.email_verification_token_hash
+        model.rate_limit_tier = user.rate_limit_tier.value
+        model.updated_at = datetime.now(UTC)
+        await self._session.flush()
+        return _user_to_entity(model)
 
 
 class SQLAlchemyRoleRepository(RoleRepository):

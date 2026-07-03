@@ -30,7 +30,10 @@ export default function LoginScreen({ onLoggedIn }: Props) {
         body: { email, password },
         auth: false,
       })
-      await saveTokens(tokens)
+      if (!tokens.refresh_token) {
+        throw new Error('Login response missing refresh token')
+      }
+      await saveTokens(tokens as TokenPair)
       onLoggedIn()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Login failed')

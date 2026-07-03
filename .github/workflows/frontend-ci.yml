@@ -32,6 +32,10 @@ jobs:
         working-directory: frontend
         run: npm run lint
 
+      - name: Security audit (npm)
+        working-directory: frontend
+        run: npm audit --audit-level=high
+
       - name: Build
         working-directory: frontend
         run: npm run build

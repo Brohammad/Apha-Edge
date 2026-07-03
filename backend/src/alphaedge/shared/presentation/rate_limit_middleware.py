@@ -14,9 +14,13 @@ def _client_key(request: Request) -> tuple[str, str]:
         return f"user:{user_id}", tier
     if api_key_id := getattr(request.state, "api_key_id", None):
         return f"apikey:{api_key_id}", getattr(request.state, "rate_limit_tier", "standard")
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        ip = forwarded.split(",")[0].strip()
+    if settings.trust_proxy_headers:
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            ip = forwarded.split(",")[0].strip()
+        else:
+            client = request.scope.get("client")
+            ip = client[0] if client else "unknown"
     else:
         client = request.scope.get("client")
         ip = client[0] if client else "unknown"

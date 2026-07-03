@@ -15,10 +15,19 @@ interface AuthContextValue {
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string, displayName: string) => Promise<void>
+  completeOAuthLogin: (accessToken: string) => Promise<void>
   logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
+
+function readOAuthAccessToken(): string | null {
+  const hash = window.location.hash.startsWith('#')
+    ? window.location.hash.slice(1)
+    : window.location.hash
+  const params = new URLSearchParams(hash)
+  return params.get('access_token')
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -26,14 +35,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setSessionExpiredHandler(() => setUser(null))
-    if (!loadTokens()) {
-      setLoading(false)
-      return
+
+    const bootstrap = async () => {
+      const oauthAccess = readOAuthAccessToken()
+      if (oauthAccess) {
+        saveTokens({ access_token: oauthAccess, refresh_token: '', token_type: 'bearer' })
+        window.history.replaceState(null, '', window.location.pathname)
+      }
+
+      if (!loadTokens() && !oauthAccess) {
+        const refreshed = await fetch('/api/v1/auth/refresh', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: '' }),
+        })
+        if (refreshed.ok) {
+          const body = (await refreshed.json()) as { data: TokenPair }
+          saveTokens(body.data)
+        }
+      }
+
+      if (!loadTokens()) {
+        setLoading(false)
+        return
+      }
+
+      try {
+        setUser(await api<User>('/auth/me'))
+      } catch {
+        saveTokens(null)
+      } finally {
+        setLoading(false)
+      }
     }
-    api<User>('/auth/me')
-      .then(setUser)
-      .catch(() => saveTokens(null))
-      .finally(() => setLoading(false))
+
+    void bootstrap()
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {
@@ -58,22 +95,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [login],
   )
 
+  const completeOAuthLogin = useCallback(async (accessToken: string) => {
+    saveTokens({ access_token: accessToken, token_type: 'bearer' })
+    setUser(await api<User>('/auth/me'))
+  }, [])
+
   const logout = useCallback(async () => {
-    const tokens = loadTokens()
-    if (tokens?.refresh_token) {
-      await api('/auth/logout', {
-        method: 'POST',
-        body: { refresh_token: tokens.refresh_token },
-        auth: false,
-      }).catch(() => {})
-    }
+    await api('/auth/logout', {
+      method: 'POST',
+      body: { refresh_token: '' },
+      auth: false,
+    }).catch(() => {})
     saveTokens(null)
     setUser(null)
   }, [])
 
   const value = useMemo(
-    () => ({ user, loading, login, register, logout }),
-    [user, loading, login, register, logout],
+    () => ({ user, loading, login, register, completeOAuthLogin, logout }),
+    [user, loading, login, register, completeOAuthLogin, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

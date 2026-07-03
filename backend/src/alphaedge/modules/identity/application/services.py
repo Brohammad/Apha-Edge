@@ -4,7 +4,8 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import bcrypt
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError
 
 from alphaedge.config import settings
 from alphaedge.modules.identity.domain.entities import RefreshToken
@@ -23,11 +24,10 @@ class PasswordService:
 
 class TokenService:
     @staticmethod
-    def create_access_token(user_id: str, roles: list[str]) -> str:
+    def create_access_token(user_id: str) -> str:
         expire = datetime.now(UTC) + timedelta(minutes=settings.jwt_access_token_expire_minutes)
         payload = {
             "sub": user_id,
-            "roles": roles,
             "exp": expire,
             "type": "access",
         }
@@ -45,12 +45,14 @@ class TokenService:
     def decode_access_token(token: str) -> dict[str, str | list[str]]:
         try:
             payload = jwt.decode(
-                token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm]
+                token,
+                settings.jwt_secret_key,
+                algorithms=[settings.jwt_algorithm],
             )
             if payload.get("type") != "access":
                 raise AuthenticationError("Invalid token type")
             return payload
-        except JWTError as e:
+        except InvalidTokenError as e:
             raise AuthenticationError("Invalid or expired token") from e
 
     @staticmethod
@@ -64,3 +66,8 @@ class TokenService:
             expires_at=expires_at,
         )
         return raw_token, entity
+
+    @staticmethod
+    def create_email_verification_token() -> tuple[str, str]:
+        raw = secrets.token_urlsafe(32)
+        return raw, TokenService.hash_token(raw)

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { LogIn } from 'lucide-react'
 import AuthShell from '../components/AuthShell'
 import { useAuth } from '../lib/auth'
@@ -8,9 +8,13 @@ import { ErrorNote, btnPrimary, inputCls } from '../components/ui'
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const oauthError = searchParams.get('oauth_error')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(
+    oauthError ? oauthError.replace(/_/g, ' ') : null,
+  )
   const [busy, setBusy] = useState(false)
 
   const submit = async (e: FormEvent) => {

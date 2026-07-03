@@ -58,3 +58,11 @@ class IngestionJobResponse(BaseModel):
     celery_task_id: str | None
     started_at: datetime | None
     completed_at: datetime | None
+
+
+class QuoteResponse(BaseModel):
+    symbol: str
+    price: str
+    change_pct: str | None
+    as_of: datetime
+    source: str

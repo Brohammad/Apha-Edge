@@ -29,6 +29,10 @@ async def auth_context_middleware(request: Request, call_next):
             try:
                 api_key_repo = SQLAlchemyApiKeyRepository(session)
                 user_id, key_entity = await resolve_api_key(api_key_repo, api_key)
+                user_repo = SQLAlchemyUserRepository(session)
+                user = await user_repo.get_by_id(user_id)
+                if not user or not user.is_active:
+                    raise AuthenticationError("Account is deactivated")
                 request.state.user_id = user_id
                 request.state.api_key_id = key_entity.id
                 request.state.rate_limit_tier = key_entity.rate_limit_tier.value
@@ -41,14 +45,16 @@ async def auth_context_middleware(request: Request, call_next):
                 payload = TokenService.decode_access_token(token)
                 sub = payload.get("sub")
                 if sub and isinstance(sub, str):
-                    request.state.user_id = UUID(sub)
+                    user_id = UUID(sub)
                     user_repo = SQLAlchemyUserRepository(session)
-                    user = await user_repo.get_by_id(UUID(sub))
-                    if user:
-                        tier = user.rate_limit_tier.value
-                        if any(r.name.value == "admin" for r in user.roles):
-                            tier = "unlimited"
-                        request.state.rate_limit_tier = tier
+                    user = await user_repo.get_by_id(user_id)
+                    if not user or not user.is_active:
+                        raise AuthenticationError("Account is deactivated")
+                    request.state.user_id = user_id
+                    tier = user.rate_limit_tier.value
+                    if any(r.name.value == "admin" for r in user.roles):
+                        tier = "unlimited"
+                    request.state.rate_limit_tier = tier
             except (AuthenticationError, ValueError):
                 pass
 

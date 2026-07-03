@@ -173,23 +173,33 @@ class StrategyCompiler:
             tree = ast.parse(source)
         except SyntaxError as exc:
             raise ValidationError(f"Python syntax error: {exc}") from exc
+
+        blocked_import_roots = frozenset(
+            {"os", "sys", "subprocess", "socket", "pathlib", "shutil", "importlib", "builtins"}
+        )
+        blocked_calls = frozenset(
+            {"eval", "exec", "compile", "open", "__import__", "getattr", "globals", "locals", "input"}
+        )
+
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    if alias.name.startswith(("os", "sys", "subprocess", "socket")):
+                    root = alias.name.split(".")[0]
+                    if root in blocked_import_roots:
                         raise ValidationError(f"Disallowed import: {alias.name}")
-            if (
-                isinstance(node, ast.ImportFrom)
-                and node.module
-                and node.module.split(".")[0]
-                in (
-                    "os",
-                    "sys",
-                    "subprocess",
-                    "socket",
-                )
-            ):
-                raise ValidationError(f"Disallowed import: {node.module}")
+            if isinstance(node, ast.ImportFrom) and node.module:
+                root = node.module.split(".")[0]
+                if root in blocked_import_roots:
+                    raise ValidationError(f"Disallowed import: {node.module}")
+            if isinstance(node, ast.Call):
+                func = node.func
+                name: str | None = None
+                if isinstance(func, ast.Name):
+                    name = func.id
+                elif isinstance(func, ast.Attribute):
+                    name = func.attr
+                if name in blocked_calls:
+                    raise ValidationError(f"Disallowed call: {name}")
 
     @staticmethod
     def compile_python(source: str, name: str, parameters: dict[str, object]) -> CompiledStrategy:

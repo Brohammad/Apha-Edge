@@ -16,6 +16,7 @@ RATE_LIMIT_EXEMPT_PREFIXES = (
     "/api/v1/metrics",
     "/api/v1/docs",
     "/api/v1/openapi.json",
+    "/api/v1/auth/oauth",
 )
 
 

@@ -39,6 +39,8 @@ class User:
     password_hash: str | None
     display_name: str
     is_active: bool = True
+    email_verified: bool = False
+    email_verification_token_hash: str | None = None
     rate_limit_tier: RateLimitTier = RateLimitTier.STANDARD
     roles: list[Role] = field(default_factory=list)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))

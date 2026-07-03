@@ -46,6 +46,7 @@ def _disable_rate_limit_for_tests() -> None:
     from alphaedge.config import settings
 
     settings.rate_limit_enabled = False
+    settings.app_env = "test"
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -106,11 +107,11 @@ async def auth_client() -> AsyncGenerator[AsyncClient, None]:
         email = f"test_{uuid4().hex[:8]}@alphaedge.io"
         await ac.post(
             "/api/v1/auth/register",
-            json={"email": email, "password": "securepass123", "display_name": "Test User"},
+            json={"email": email, "password": "SecurePass1234", "display_name": "Test User"},
         )
         login = await ac.post(
             "/api/v1/auth/login",
-            json={"email": email, "password": "securepass123"},
+            json={"email": email, "password": "SecurePass1234"},
         )
         token = login.json()["data"]["access_token"]
         ac.headers["Authorization"] = f"Bearer {token}"

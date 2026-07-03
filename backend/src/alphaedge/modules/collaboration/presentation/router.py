@@ -1,7 +1,7 @@
 import json
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,11 +12,11 @@ from alphaedge.modules.collaboration.domain.entities import (
     CollabSessionStatus,
 )
 from alphaedge.modules.collaboration.infrastructure.models import SQLAlchemyCollabRepository
-from alphaedge.modules.identity.application.services import TokenService
 from alphaedge.modules.strategy.infrastructure.models import SQLAlchemyStrategyRepository
 from alphaedge.shared.domain.exceptions import AuthorizationError, NotFoundError
 from alphaedge.shared.infrastructure.database import async_session_factory
 from alphaedge.shared.presentation.envelope import success_response
+from alphaedge.shared.presentation.ws_auth import authenticate_websocket
 
 collaboration_router = APIRouter(prefix="/collaboration", tags=["Collaboration"])
 
@@ -25,17 +25,26 @@ class StartSessionRequest(BaseModel):
     strategy_id: str
 
 
-async def _auth_ws(token: str | None) -> UUID | None:
-    if not token:
-        return None
-    try:
-        payload = TokenService.decode_access_token(token)
-        sub = payload.get("sub")
-        if sub and isinstance(sub, str):
-            return UUID(sub)
-    except Exception:
-        return None
-    return None
+async def _auth_ws(websocket: WebSocket) -> UUID | None:
+    return await authenticate_websocket(websocket)
+
+
+async def _user_may_join_session(session_id: UUID, user_id: UUID) -> CollabSession:
+    async with async_session_factory() as session:
+        repo = SQLAlchemyCollabRepository(session)
+        collab = await repo.get_session(session_id)
+        if not collab or collab.status != CollabSessionStatus.ACTIVE:
+            raise NotFoundError("CollabSession", str(session_id))
+
+        if collab.host_user_id == user_id:
+            return collab
+
+        strategy_repo = SQLAlchemyStrategyRepository(session)
+        strategy = await strategy_repo.get_by_id(collab.strategy_id)
+        if strategy and strategy.user_id == user_id:
+            return collab
+
+        raise AuthorizationError("You are not authorized to join this collaboration session")
 
 
 @collaboration_router.post("/sessions", status_code=201)
@@ -61,25 +70,27 @@ async def start_session(
 async def collab_websocket(
     websocket: WebSocket,
     session_id: UUID,
-    token: str | None = Query(default=None),
 ):
-    user_id = await _auth_ws(token)
+    user_id = await _auth_ws(websocket)
     if user_id is None:
         await websocket.close(code=4401, reason="Unauthorized")
         return
 
+    try:
+        await _user_may_join_session(session_id, user_id)
+    except (NotFoundError, AuthorizationError):
+        await websocket.close(code=4403, reason="Forbidden")
+        return
+
     async with async_session_factory() as session:
         repo = SQLAlchemyCollabRepository(session)
-        collab = await repo.get_session(session_id)
-        if not collab or collab.status != CollabSessionStatus.ACTIVE:
-            await websocket.close(code=4404, reason="Session not found")
-            return
         await repo.save_event(
             CollabEvent.create(session_id, user_id, "join", {"user_id": str(user_id)})
         )
         await session.commit()
 
-    await websocket.accept()
+    subprotocol = websocket.headers.get("sec-websocket-protocol")
+    await websocket.accept(subprotocol=subprotocol)
     peers: set[WebSocket] = {websocket}
 
     try:
@@ -92,7 +103,13 @@ async def collab_websocket(
                 continue
 
             event_type = str(msg.get("type", "edit"))
+            if event_type not in ("cursor", "edit", "join", "leave"):
+                await websocket.send_json({"type": "error", "message": "Unsupported event type"})
+                continue
             payload = msg.get("payload") or {}
+            if not isinstance(payload, dict):
+                await websocket.send_json({"type": "error", "message": "Payload must be an object"})
+                continue
 
             async with async_session_factory() as session:
                 repo = SQLAlchemyCollabRepository(session)

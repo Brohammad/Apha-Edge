@@ -28,8 +28,10 @@ from alphaedge.modules.execution.domain.repositories import (
     OrderEventRepository,
     OrderRepository,
 )
+from alphaedge.config import settings
 from alphaedge.modules.execution.infrastructure.alpaca_broker import AlpacaBroker
 from alphaedge.shared.domain.value_objects import Side
+from alphaedge.shared.infrastructure.crypto import decrypt_json, encrypt_json
 from alphaedge.shared.infrastructure.database import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 
@@ -86,11 +88,12 @@ class OrderEventModel(Base):
 
 
 def _connection_to_entity(m: BrokerConnectionModel) -> BrokerConnection:
+    credentials = decrypt_json(dict(m.credentials), settings.credentials_encryption_key)
     return BrokerConnection(
         id=m.id,
         user_id=m.user_id,
         broker_name=BrokerName(m.broker_name),
-        credentials=m.credentials,
+        credentials=credentials,
         is_paper=m.is_paper,
         is_active=m.is_active,
         created_at=m.created_at,
@@ -155,11 +158,14 @@ class SQLAlchemyBrokerConnectionRepository(BrokerConnectionRepository):
         self._session = session
 
     async def save(self, connection: BrokerConnection) -> BrokerConnection:
+        stored_credentials = encrypt_json(
+            connection.credentials, settings.credentials_encryption_key
+        )
         model = BrokerConnectionModel(
             id=connection.id,
             user_id=connection.user_id,
             broker_name=connection.broker_name.value,
-            credentials=connection.credentials,
+            credentials=stored_credentials,
             is_paper=connection.is_paper,
             is_active=connection.is_active,
         )
@@ -185,7 +191,9 @@ class SQLAlchemyBrokerConnectionRepository(BrokerConnectionRepository):
         if not model:
             raise ValueError(f"BrokerConnection {connection.id} not found")
         model.is_active = connection.is_active
-        model.credentials = connection.credentials
+        model.credentials = encrypt_json(
+            connection.credentials, settings.credentials_encryption_key
+        )
         model.updated_at = datetime.now(UTC)
         await self._session.flush()
         return _connection_to_entity(model)

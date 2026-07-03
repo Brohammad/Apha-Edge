@@ -10,7 +10,7 @@ pytestmark = pytest.mark.integration
 async def test_create_and_use_api_key(auth_client: AsyncClient, require_migrated_db):
     create = await auth_client.post(
         "/api/v1/auth/api-keys",
-        json={"name": "CI test key", "scopes": ["read:*"], "rate_limit_tier": "pro"},
+        json={"name": "CI test key", "scopes": ["read:*"], "rate_limit_tier": "standard"},
     )
     assert create.status_code == 201
     data = create.json()["data"]

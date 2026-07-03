@@ -41,7 +41,8 @@ backend/cpp/*.egg-info/
 *.so
 *.dylib
 *.o
-
+.env
+.gitignore
 # Secrets
 .env.local
 .env.production

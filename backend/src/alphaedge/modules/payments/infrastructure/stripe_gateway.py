@@ -1,4 +1,4 @@
-"""Stripe checkout — uses real Stripe when configured, mock flow otherwise."""
+"""Stripe checkout — uses real Stripe when configured, mock flow in development only."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from uuid import uuid4
 
 from alphaedge.config import settings
+from alphaedge.shared.domain.exceptions import ValidationError
 
 
 @dataclass(frozen=True)
@@ -46,6 +47,11 @@ def create_checkout_session(
         return CheckoutSession(
             session_id=str(session.id),
             checkout_url=str(session.url),
+        )
+
+    if not settings.is_development and not settings.is_testing:
+        raise ValidationError(
+            "Stripe is not configured. Paid listings require STRIPE_SECRET_KEY in production."
         )
 
     session_id = f"mock_{uuid4().hex}"

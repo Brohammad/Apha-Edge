@@ -7,6 +7,7 @@ from alphaedge.modules.execution.domain.services import (
     record_event,
     record_execution,
 )
+from alphaedge.modules.execution.infrastructure.alpaca_broker import BrokerError
 from alphaedge.modules.execution.infrastructure.models import (
     SQLAlchemyBrokerConnectionRepository,
     SQLAlchemyExecutionRepository,
@@ -66,7 +67,16 @@ async def execute_order(order_id: UUID) -> None:
 
         broker = get_broker(connection)
 
-        ack = await broker.submit_order(order, bar.close)
+        try:
+            ack = await broker.submit_order(order, bar.close)
+        except BrokerError as exc:
+            order.mark_rejected(str(exc))
+            await order_repo.update(order)
+            await event_repo.save(
+                record_event(order, OrderEventType.REJECTED, {"reason": str(exc)})
+            )
+            await session.commit()
+            return
         if order.status == OrderStatus.PENDING:
             order.mark_submitted(ack.broker_order_id)
             await order_repo.update(order)

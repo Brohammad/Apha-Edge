@@ -22,6 +22,15 @@ class Settings(BaseSettings):
     app_debug: bool = False
     app_secret_key: str = "change-me"
 
+    # Trust X-Forwarded-For only when the app sits behind a reverse proxy (e.g. Nginx).
+    trust_proxy_headers: bool = False
+
+    # Protect /api/v1/metrics in production (Bearer token or X-Metrics-Key header).
+    metrics_api_key: str = ""
+
+    # Fernet-compatible secret for encrypting broker credentials at rest.
+    credentials_encryption_key: str = ""
+
     database_url: str = "postgresql+asyncpg://alphaedge:alphaedge@localhost:5432/alphaedge"
     redis_url: str = "redis://localhost:6379/0"
 
@@ -74,6 +83,34 @@ class Settings(BaseSettings):
     @property
     def is_testing(self) -> bool:
         return self.app_env in ("test", "testing")
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env == "production"
+
+    @property
+    def is_development(self) -> bool:
+        return self.app_env in ("development", "dev", "local")
+
+    def validate_security(self) -> None:
+        """Fail fast when unsafe defaults would reach a deployed environment."""
+        if self.is_testing or self.is_development:
+            return
+
+        unsafe: list[str] = []
+        if self.jwt_secret_key in ("", "change-me-jwt"):
+            unsafe.append("JWT_SECRET_KEY")
+        if self.app_secret_key in ("", "change-me"):
+            unsafe.append("APP_SECRET_KEY")
+        if "alphaedge:alphaedge@" in self.database_url:
+            unsafe.append("DATABASE_URL (default credentials)")
+        if self.live_trading_enabled and not self.credentials_encryption_key:
+            unsafe.append("CREDENTIALS_ENCRYPTION_KEY (required for live trading)")
+        if unsafe:
+            raise RuntimeError(
+                "Refusing to start: insecure configuration for "
+                f"APP_ENV={self.app_env!r}: {', '.join(unsafe)}"
+            )
 
 
 settings = Settings()

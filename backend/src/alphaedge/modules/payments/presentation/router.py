@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from alphaedge.config import settings
 from alphaedge.dependencies import get_current_user_id, get_db_session
+from alphaedge.shared.domain.exceptions import AuthorizationError
 from alphaedge.modules.marketplace.infrastructure.models import SQLAlchemyStrategyListingRepository
 from alphaedge.modules.payments.application.handlers import (
     CompleteMockCheckoutCommand,
@@ -17,6 +18,7 @@ from alphaedge.modules.payments.application.handlers import (
 from alphaedge.modules.payments.infrastructure.models import (
     SQLAlchemyMarketplacePurchaseRepository,
 )
+from alphaedge.shared.infrastructure.audit import record_audit
 from alphaedge.shared.presentation.envelope import success_response
 
 payments_router = APIRouter(prefix="/payments", tags=["Payments"])
@@ -64,10 +66,20 @@ async def complete_mock_checkout(
     user_id: UUID = Depends(get_current_user_id),
     session: AsyncSession = Depends(get_db_session),
 ):
+    if not settings.is_development and not settings.is_testing:
+        raise AuthorizationError("Mock payments are only available in development")
     purchase_repo = SQLAlchemyMarketplacePurchaseRepository(session)
     handler = CompleteMockCheckoutHandler(purchase_repo)
     result = await handler.handle(
         CompleteMockCheckoutCommand(user_id=user_id, session_id=body.session_id)
+    )
+    await record_audit(
+        session,
+        user_id=user_id,
+        action="payment.mock_complete",
+        resource_type="marketplace_purchase",
+        request=request,
+        changes={"session_id": body.session_id},
     )
     await session.commit()
     return success_response(result, request_id=getattr(request.state, "request_id", ""))
@@ -79,9 +91,14 @@ async def stripe_webhook(
     stripe_signature: str | None = Header(default=None, alias="Stripe-Signature"),
     session: AsyncSession = Depends(get_db_session),
 ):
+    from fastapi.responses import JSONResponse
+
     purchase_repo = SQLAlchemyMarketplacePurchaseRepository(session)
     handler = StripeWebhookHandler(purchase_repo)
     payload = await request.body()
     result = await handler.handle(payload, stripe_signature)
     await session.commit()
-    return result
+    status_code = 200
+    if result.get("status") in ("invalid_signature", "invalid_payload"):
+        status_code = 400
+    return JSONResponse(status_code=status_code, content=result)

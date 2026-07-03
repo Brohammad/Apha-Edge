@@ -16,7 +16,9 @@ import {
 import MarketClock from './MarketClock'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import type { Bar, Instrument, Paginated } from '../lib/types'
+import type { Instrument, Paginated, Quote } from '../lib/types'
+
+const TAPE_SYMBOLS = ['AAPL', 'MSFT', 'GOOGL', 'SPY']
 
 const NAV = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
@@ -34,6 +36,7 @@ interface TapeEntry {
   symbol: string
   close: number
   changePct: number | null
+  live: boolean
 }
 
 function useTickerTape(): TapeEntry[] {
@@ -43,30 +46,24 @@ function useTickerTape(): TapeEntry[] {
     staleTime: 5 * 60_000,
   })
 
-  const ids = (instruments?.items ?? []).map((i) => ({ id: i.id, symbol: i.symbol }))
+  const symbols =
+    instruments?.items.length ? instruments.items.map((i) => i.symbol) : TAPE_SYMBOLS
 
   const { data: tape } = useQuery({
-    queryKey: ['tape-bars', ids.map((i) => i.id).join(',')],
-    enabled: ids.length > 0,
+    queryKey: ['tape-quotes', symbols.join(',')],
+    enabled: symbols.length > 0,
     refetchInterval: 60_000,
+    staleTime: 30_000,
     queryFn: async () => {
-      const entries = await Promise.all(
-        ids.map(async ({ id, symbol }) => {
-          try {
-            const bars = await api<Paginated<Bar>>(`/instruments/${id}/bars`, {
-              query: { limit: 2 },
-            })
-            const [latest, prev] = bars.items
-            if (!latest) return null
-            const close = Number(latest.close)
-            const changePct = prev ? (close - Number(prev.close)) / Number(prev.close) : null
-            return { symbol, close, changePct }
-          } catch {
-            return null
-          }
-        }),
-      )
-      return entries.filter((e): e is TapeEntry => e !== null)
+      const quotes = await api<{ items: Quote[] }>('/market-data/quotes', {
+        query: { symbols: symbols.join(',') },
+      })
+      return quotes.items.map((q) => ({
+        symbol: q.symbol,
+        close: Number(q.price),
+        changePct: q.change_pct !== null ? Number(q.change_pct) : null,
+        live: q.source === 'alpha_vantage',
+      }))
     },
   })
 
@@ -82,13 +79,16 @@ function TickerTape() {
       <div className="flex w-max animate-ticker gap-8 px-4 py-1.5">
         {doubled.map((e, i) => (
           <span key={i} className="flex items-center gap-2 font-mono text-xs whitespace-nowrap">
-            <span className="font-semibold text-ink-100">{e.symbol}</span>
+            <span className="font-semibold text-ink-100">
+              {e.symbol}
+              {e.live && <span className="ml-1 text-bull-500">●</span>}
+            </span>
             <span className="tabular-nums text-ink-200">{e.close.toFixed(2)}</span>
             {e.changePct !== null && (
               <span
                 className={`tabular-nums ${e.changePct >= 0 ? 'text-bull-400' : 'text-bear-400'}`}
               >
-                {e.changePct >= 0 ? '▲' : '▼'} {Math.abs(e.changePct * 100).toFixed(2)}%
+                {e.changePct >= 0 ? '▲' : '▼'} {Math.abs(e.changePct).toFixed(2)}%
               </span>
             )}
           </span>

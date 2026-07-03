@@ -1,11 +1,13 @@
 from uuid import UUID
 
+from urllib.parse import quote
+
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from alphaedge.config import settings
-from alphaedge.dependencies import get_current_user_id, get_db_session
+from alphaedge.dependencies import get_auth_context, get_current_user_id, get_db_session
 from alphaedge.modules.identity.application.commands import (
     CreateApiKeyCommand,
     GetCurrentUserQuery,
@@ -15,6 +17,7 @@ from alphaedge.modules.identity.application.commands import (
     RefreshTokenCommand,
     RegisterUserCommand,
     RevokeApiKeyCommand,
+    VerifyEmailCommand,
 )
 from alphaedge.modules.identity.application.handlers import (
     CreateApiKeyHandler,
@@ -24,13 +27,15 @@ from alphaedge.modules.identity.application.handlers import (
     LogoutUserHandler,
     RefreshTokenHandler,
     RegisterUserHandler,
+    ResendVerificationHandler,
     RevokeApiKeyHandler,
+    VerifyEmailHandler,
 )
 from alphaedge.modules.identity.application.oauth_service import (
     find_or_create_oauth_user,
     issue_token_pair,
 )
-from alphaedge.modules.identity.domain.entities import OAuthProvider, RateLimitTier
+from alphaedge.modules.identity.domain.entities import OAuthProvider, RateLimitTier, RoleName
 from alphaedge.modules.identity.infrastructure.models import (
     SQLAlchemyApiKeyRepository,
     SQLAlchemyOAuthAccountRepository,
@@ -54,11 +59,47 @@ from alphaedge.modules.identity.presentation.schemas import (
     RegisterRequest,
     TokenResponse,
     UserResponse,
+    VerifyEmailRequest,
 )
-from alphaedge.shared.domain.exceptions import ValidationError
+from alphaedge.shared.domain.exceptions import AuthorizationError, ValidationError
+from alphaedge.shared.infrastructure.audit import record_audit
+from alphaedge.shared.infrastructure.ws_tickets import issue_ws_ticket
+from alphaedge.shared.presentation.cookies import (
+    clear_refresh_cookie,
+    read_refresh_token,
+    set_refresh_cookie,
+)
 from alphaedge.shared.presentation.envelope import success_response
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+def _user_response(result: object) -> dict:
+    return UserResponse(
+        id=str(result.id),
+        email=result.email,
+        display_name=result.display_name,
+        roles=result.roles,
+        is_active=result.is_active,
+        email_verified=result.email_verified,
+    ).model_dump()
+
+
+def _token_json_response(
+    request: Request,
+    access_token: str,
+    refresh_token: str,
+    *,
+    include_refresh_in_body: bool = False,
+) -> JSONResponse:
+    data = TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token if include_refresh_in_body else None,
+    ).model_dump()
+    envelope = success_response(data, request_id=getattr(request.state, "request_id", ""))
+    response = JSONResponse(content=envelope)
+    set_refresh_cookie(response, refresh_token)
+    return response
 
 
 def _get_repos(session: AsyncSession):
@@ -87,13 +128,7 @@ async def register(
         )
     )
     return success_response(
-        UserResponse(
-            id=str(result.id),
-            email=result.email,
-            display_name=result.display_name,
-            roles=result.roles,
-            is_active=result.is_active,
-        ).model_dump(),
+        _user_response(result),
         request_id=getattr(request.state, "request_id", ""),
     )
 
@@ -107,12 +142,20 @@ async def login(
     user_repo, _, token_repo, _, _ = _get_repos(session)
     handler = LoginUserHandler(user_repo, token_repo)
     result = await handler.handle(LoginUserCommand(email=body.email, password=body.password))
-    return success_response(
-        TokenResponse(
-            access_token=result.access_token,
-            refresh_token=result.refresh_token,
-        ).model_dump(),
-        request_id=getattr(request.state, "request_id", ""),
+    await record_audit(
+        session,
+        user_id=None,
+        action="auth.login",
+        resource_type="user",
+        request=request,
+        changes={"email": body.email},
+    )
+    mobile_client = request.headers.get("X-Client-Type") == "mobile"
+    return _token_json_response(
+        request,
+        result.access_token,
+        result.refresh_token,
+        include_refresh_in_body=mobile_client,
     )
 
 
@@ -122,26 +165,73 @@ async def refresh(
     request: Request,
     session: AsyncSession = Depends(get_db_session),
 ):
+    refresh_token = read_refresh_token(request, body.refresh_token)
+    if not refresh_token:
+        raise ValidationError("Refresh token required")
     user_repo, _, token_repo, _, _ = _get_repos(session)
     handler = RefreshTokenHandler(user_repo, token_repo)
-    result = await handler.handle(RefreshTokenCommand(refresh_token=body.refresh_token))
-    return success_response(
-        TokenResponse(
-            access_token=result.access_token,
-            refresh_token=result.refresh_token,
-        ).model_dump(),
-        request_id=getattr(request.state, "request_id", ""),
+    result = await handler.handle(RefreshTokenCommand(refresh_token=refresh_token))
+    mobile_client = request.headers.get("X-Client-Type") == "mobile"
+    return _token_json_response(
+        request,
+        result.access_token,
+        result.refresh_token,
+        include_refresh_in_body=mobile_client,
     )
 
 
 @router.post("/logout", status_code=204)
 async def logout(
     body: LogoutRequest,
+    request: Request,
     session: AsyncSession = Depends(get_db_session),
 ):
+    refresh_token = read_refresh_token(request, body.refresh_token)
     _, _, token_repo, _, _ = _get_repos(session)
     handler = LogoutUserHandler(token_repo)
-    await handler.handle(LogoutUserCommand(refresh_token=body.refresh_token))
+    await handler.handle(LogoutUserCommand(refresh_token=refresh_token or ""))
+    response = JSONResponse(status_code=204, content=None)
+    clear_refresh_cookie(response)
+    return response
+
+
+@router.post("/verify-email")
+async def verify_email(
+    body: VerifyEmailRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_db_session),
+):
+    user_repo, _, _, _, _ = _get_repos(session)
+    handler = VerifyEmailHandler(user_repo)
+    result = await handler.handle(VerifyEmailCommand(token=body.token))
+    return success_response(
+        _user_response(result),
+        request_id=getattr(request.state, "request_id", ""),
+    )
+
+
+@router.post("/resend-verification")
+async def resend_verification(
+    request: Request,
+    user_id: UUID = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_db_session),
+):
+    user_repo, _, _, _, _ = _get_repos(session)
+    handler = ResendVerificationHandler(user_repo)
+    dev_token = await handler.handle(user_id)
+    payload: dict[str, object] = {"sent": dev_token is None}
+    if dev_token:
+        payload["verification_token"] = dev_token
+    return success_response(payload, request_id=getattr(request.state, "request_id", ""))
+
+
+@router.post("/ws-ticket")
+async def create_ws_ticket(
+    request: Request,
+    user_id: UUID = Depends(get_current_user_id),
+):
+    ticket = await issue_ws_ticket(user_id)
+    return success_response({"ticket": ticket}, request_id=getattr(request.state, "request_id", ""))
 
 
 @router.get("/me")
@@ -154,13 +244,7 @@ async def me(
     handler = GetCurrentUserHandler(user_repo)
     result = await handler.handle(GetCurrentUserQuery(user_id=user_id))
     return success_response(
-        UserResponse(
-            id=str(result.id),
-            email=result.email,
-            display_name=result.display_name,
-            roles=result.roles,
-            is_active=result.is_active,
-        ).model_dump(),
+        _user_response(result),
         request_id=getattr(request.state, "request_id", ""),
     )
 
@@ -179,42 +263,69 @@ async def oauth_start(provider: str):
 @router.get("/oauth/{provider}/callback")
 async def oauth_callback(
     provider: str,
-    code: str,
-    state: str,
+    request: Request,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
     session: AsyncSession = Depends(get_db_session),
 ):
+    if error:
+        return RedirectResponse(
+            f"{settings.oauth_frontend_callback_url}?error={quote(error)}"
+        )
+    if not code or not state:
+        return RedirectResponse(
+            f"{settings.oauth_frontend_callback_url}?error={quote('missing_oauth_code')}"
+        )
+
     if not await verify_oauth_state(state):
-        raise ValidationError("Invalid or expired OAuth state")
+        return RedirectResponse(
+            f"{settings.oauth_frontend_callback_url}?error={quote('invalid_oauth_state')}"
+        )
 
     try:
         oauth_provider = OAuthProvider(provider)
     except ValueError as exc:
         raise ValidationError(f"Unsupported OAuth provider: {provider}") from exc
 
-    user_repo, role_repo, token_repo, oauth_repo, _ = _get_repos(session)
-    info = await exchange_code(oauth_provider, code)
-    user = await find_or_create_oauth_user(user_repo, role_repo, oauth_repo, oauth_provider, info)
-    access_token, refresh_token = await issue_token_pair(user, token_repo)
+    try:
+        user_repo, role_repo, token_repo, oauth_repo, _ = _get_repos(session)
+        info = await exchange_code(oauth_provider, code)
+        user = await find_or_create_oauth_user(user_repo, role_repo, oauth_repo, oauth_provider, info)
+        access_token, refresh_token = await issue_token_pair(user, token_repo)
+    except Exception:
+        return RedirectResponse(
+            f"{settings.oauth_frontend_callback_url}?error={quote('oauth_exchange_failed')}"
+        )
 
-    redirect_url = (
-        f"{settings.oauth_frontend_callback_url}"
-        f"?access_token={access_token}&refresh_token={refresh_token}"
-    )
-    return RedirectResponse(redirect_url)
+    redirect_url = f"{settings.oauth_frontend_callback_url}#access_token={quote(access_token)}"
+    response = RedirectResponse(redirect_url)
+    set_refresh_cookie(response, refresh_token)
+    return response
 
 
 @router.post("/api-keys", status_code=201)
 async def create_api_key(
     body: CreateApiKeyRequest,
     request: Request,
-    user_id: UUID = Depends(get_current_user_id),
+    auth=Depends(get_auth_context),
     session: AsyncSession = Depends(get_db_session),
 ):
+    user_id = auth.user_id
     _, _, _, _, api_key_repo = _get_repos(session)
     try:
         tier = RateLimitTier(body.rate_limit_tier)
     except ValueError as exc:
         raise ValidationError(f"Invalid rate limit tier: {body.rate_limit_tier}") from exc
+
+    if auth.user and not auth.user.has_role(RoleName.ADMIN):
+        user_tier = auth.user.rate_limit_tier
+        tier_order = list(RateLimitTier)
+        if tier_order.index(tier) > tier_order.index(user_tier):
+            raise AuthorizationError("Cannot create API keys above your account rate limit tier")
+        if tier == RateLimitTier.UNLIMITED:
+            raise AuthorizationError("Unlimited API key tier requires admin role")
+
     handler = CreateApiKeyHandler(api_key_repo)
     result = await handler.handle(
         CreateApiKeyCommand(
@@ -223,6 +334,15 @@ async def create_api_key(
             scopes=body.scopes,
             rate_limit_tier=tier,
         )
+    )
+    await record_audit(
+        session,
+        user_id=user_id,
+        action="api_key.create",
+        resource_type="api_key",
+        resource_id=result.api_key.id,
+        request=request,
+        changes={"name": body.name, "scopes": body.scopes},
     )
     return success_response(
         CreateApiKeyResponse(
@@ -272,9 +392,18 @@ async def list_api_keys(
 @router.delete("/api-keys/{key_id}", status_code=204)
 async def revoke_api_key(
     key_id: UUID,
+    request: Request,
     user_id: UUID = Depends(get_current_user_id),
     session: AsyncSession = Depends(get_db_session),
 ):
     _, _, _, _, api_key_repo = _get_repos(session)
     handler = RevokeApiKeyHandler(api_key_repo)
     await handler.handle(RevokeApiKeyCommand(user_id=user_id, key_id=key_id))
+    await record_audit(
+        session,
+        user_id=user_id,
+        action="api_key.revoke",
+        resource_type="api_key",
+        resource_id=key_id,
+        request=request,
+    )

@@ -18,6 +18,7 @@ import InsightDetailPage from './pages/InsightDetailPage'
 import MarketplacePage from './pages/MarketplacePage'
 import OrganizationsPage from './pages/OrganizationsPage'
 import OAuthCallbackPage from './pages/OAuthCallbackPage'
+import VerifyEmailPage from './pages/VerifyEmailPage'
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -38,6 +39,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route
         element={
           <Protected>

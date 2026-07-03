@@ -11,7 +11,7 @@ dependencies = [
     "alembic>=1.14.0",
     "pydantic[email]>=2.10.0",
     "pydantic-settings>=2.6.0",
-    "python-jose[cryptography]>=3.3.0",
+    "PyJWT>=2.9.0",
     "bcrypt>=4.2.0",
     "redis>=5.2.0",
     "celery>=5.4.0",
@@ -21,6 +21,7 @@ dependencies = [
     "pyyaml>=6.0.2",
     "optuna>=3.6.0",
     "stripe>=11.0.0",
+    "cryptography>=43.0.0",
 ]
 
 [project.optional-dependencies]
@@ -48,6 +49,7 @@ testpaths = ["tests"]
 pythonpath = ["src", "."]
 markers = [
     "integration: tests requiring Postgres (run with make test-integration)",
+    "e2e: end-to-end tests against a running API stack (run with make test-e2e)",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",

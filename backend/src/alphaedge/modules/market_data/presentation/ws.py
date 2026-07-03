@@ -2,40 +2,24 @@ import asyncio
 import json
 from uuid import UUID
 
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from alphaedge.modules.identity.application.services import TokenService
 from alphaedge.modules.market_data.domain.enums import Timeframe
 from alphaedge.modules.market_data.infrastructure.models import SQLAlchemyBarRepository
 from alphaedge.shared.infrastructure.database import async_session_factory
+from alphaedge.shared.presentation.ws_auth import authenticate_websocket
 
 ws_router = APIRouter(tags=["Market Data Streaming"])
 
 
-async def _authenticate_ws(token: str | None) -> UUID | None:
-    if not token:
-        return None
-    try:
-        payload = TokenService.decode_access_token(token)
-        sub = payload.get("sub")
-        if sub and isinstance(sub, str):
-            return UUID(sub)
-    except Exception:
-        return None
-    return None
-
-
 @ws_router.websocket("/ws/market-data")
-async def market_data_stream(
-    websocket: WebSocket,
-    token: str | None = Query(default=None),
-):
-    user_id = await _authenticate_ws(token)
+async def market_data_stream(websocket: WebSocket):
+    user_id = await authenticate_websocket(websocket)
     if user_id is None:
         await websocket.close(code=4401, reason="Unauthorized")
         return
 
-    await websocket.accept()
+    await websocket.accept(subprotocol=websocket.headers.get("sec-websocket-protocol"))
     subscriptions: set[UUID] = set()
 
     try:

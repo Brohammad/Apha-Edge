@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Users, Wifi, WifiOff } from 'lucide-react'
-import { api, loadTokens } from '../lib/api'
+import { api, fetchWsTicket } from '../lib/api'
 import { btnPrimary } from './ui'
 import type { CollabSessionInfo } from '../lib/types'
 
@@ -27,15 +27,13 @@ export default function CollabPanel({ strategyId, code, onRemoteEdit }: CollabPa
   }
 
   const connect = useCallback(
-    (sessionId: string) => {
-      const tokens = loadTokens()
-      if (!tokens) return
-
+    async (sessionId: string) => {
+      const ticket = await fetchWsTicket()
       const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       const host = window.location.host
-      const url = `${proto}//${host}/api/v1/collaboration/ws/${sessionId}?token=${encodeURIComponent(tokens.access_token)}`
+      const url = `${proto}//${host}/api/v1/collaboration/ws/${sessionId}`
 
-      const ws = new WebSocket(url)
+      const ws = new WebSocket(url, [`ticket.${ticket}`])
       wsRef.current = ws
 
       ws.onopen = () => {

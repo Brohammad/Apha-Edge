@@ -1,7 +1,6 @@
 import type { ApiErrorBody, Envelope, TokenPair } from './types'
 
 const BASE = '/api/v1'
-const STORAGE_KEY = 'alphaedge.tokens'
 
 export class ApiError extends Error {
   code: string
@@ -14,22 +13,15 @@ export class ApiError extends Error {
   }
 }
 
+let accessToken: string | null = null
+
 export function loadTokens(): TokenPair | null {
-  const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) return null
-  try {
-    return JSON.parse(raw) as TokenPair
-  } catch {
-    return null
-  }
+  if (!accessToken) return null
+  return { access_token: accessToken, refresh_token: '', token_type: 'bearer' }
 }
 
 export function saveTokens(tokens: TokenPair | null): void {
-  if (tokens) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tokens))
-  } else {
-    localStorage.removeItem(STORAGE_KEY)
-  }
+  accessToken = tokens?.access_token ?? null
 }
 
 let onSessionExpired: (() => void) | null = null
@@ -55,12 +47,11 @@ let refreshPromise: Promise<boolean> | null = null
 async function tryRefresh(): Promise<boolean> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
-      const tokens = loadTokens()
-      if (!tokens?.refresh_token) return false
       const res = await fetch(`${BASE}/auth/refresh`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: tokens.refresh_token }),
+        body: JSON.stringify({ refresh_token: '' }),
       })
       if (!res.ok) return false
       const body = (await res.json()) as Envelope<TokenPair>
@@ -96,13 +87,13 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
   const doFetch = () => {
     const headers: Record<string, string> = {}
     if (body !== undefined) headers['Content-Type'] = 'application/json'
-    if (auth) {
-      const tokens = loadTokens()
-      if (tokens) headers['Authorization'] = `Bearer ${tokens.access_token}`
+    if (auth && accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`
     }
     return fetch(url, {
       method,
       headers,
+      credentials: 'include',
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
   }
@@ -125,4 +116,9 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
 
   const json = (await res.json()) as Envelope<T>
   return json.data
+}
+
+export async function fetchWsTicket(): Promise<string> {
+  const data = await api<{ ticket: string }>('/auth/ws-ticket', { method: 'POST' })
+  return data.ticket
 }

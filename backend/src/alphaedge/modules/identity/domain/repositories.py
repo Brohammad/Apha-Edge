@@ -20,6 +20,12 @@ class UserRepository(ABC):
     @abstractmethod
     async def save(self, user: User) -> User: ...
 
+    @abstractmethod
+    async def update(self, user: User) -> User: ...
+
+    @abstractmethod
+    async def get_by_verification_token_hash(self, token_hash: str) -> User | None: ...
+
 
 class RoleRepository(ABC):
     @abstractmethod

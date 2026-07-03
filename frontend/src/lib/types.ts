@@ -27,11 +27,12 @@ export interface User {
   display_name: string
   roles: string[]
   is_active: boolean
+  email_verified: boolean
 }
 
 export interface TokenPair {
   access_token: string
-  refresh_token: string
+  refresh_token?: string
   token_type: string
 }
 
@@ -45,6 +46,14 @@ export interface Instrument {
   currency: string
   name: string
   is_active: boolean
+}
+
+export interface Quote {
+  symbol: string
+  price: string
+  change_pct: string | null
+  as_of: string
+  source: string
 }
 
 export interface Bar {
@@ -390,6 +399,4 @@ export interface CollabSessionInfo {
 
 export interface LiveTradingStatus {
   live_trading_enabled: boolean
-  stripe_configured: boolean
-  alpaca_configured: boolean
 }

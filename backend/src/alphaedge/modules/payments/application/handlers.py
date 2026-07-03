@@ -116,18 +116,39 @@ class StripeWebhookHandler:
             return {"status": "ignored"}
 
         import stripe
+        from stripe import SignatureVerificationError
 
         stripe.api_key = settings.stripe_secret_key
-        event = stripe.Webhook.construct_event(
-            payload, signature or "", settings.stripe_webhook_secret
-        )
+        try:
+            event = stripe.Webhook.construct_event(
+                payload, signature or "", settings.stripe_webhook_secret
+            )
+        except SignatureVerificationError:
+            return {"status": "invalid_signature"}
+        except ValueError:
+            return {"status": "invalid_payload"}
+
         if event["type"] != "checkout.session.completed":
             return {"status": "ignored"}
 
         session = event["data"]["object"]
         session_id = str(session.get("id", ""))
+        amount_total = session.get("amount_total")
+        currency = str(session.get("currency", "")).lower()
+
         purchase = await self._purchase_repo.get_by_session_id(session_id)
-        if purchase and purchase.status.value != "completed":
-            purchase.mark_completed()
-            await self._purchase_repo.update(purchase)
+        if not purchase:
+            return {"status": "ignored"}
+
+        if purchase.status.value == "completed":
+            return {"status": "processed"}
+
+        if currency != "usd" or amount_total is None:
+            return {"status": "amount_mismatch"}
+
+        if int(amount_total) != purchase.amount_cents:
+            return {"status": "amount_mismatch"}
+
+        purchase.mark_completed()
+        await self._purchase_repo.update(purchase)
         return {"status": "processed"}

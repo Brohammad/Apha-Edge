@@ -74,6 +74,7 @@ async def find_or_create_oauth_user(
     user = await user_repo.get_by_email(info.email)
     if not user:
         user = User.create(info.email, password_hash=None, display_name=info.display_name)
+        user.email_verified = True
         default_roles = await role_repo.get_default_roles()
         user.roles = default_roles
         saved = await user_repo.save(user)
@@ -96,8 +97,7 @@ async def issue_token_pair(
     user: User,
     token_repo: RefreshTokenRepository,
 ) -> tuple[str, str]:
-    roles = [r.name.value for r in user.roles]
-    access_token = TokenService.create_access_token(str(user.id), roles)
+    access_token = TokenService.create_access_token(str(user.id))
     raw_refresh, refresh_entity = TokenService.build_refresh_token(user.id)
     await token_repo.save(refresh_entity)
     return access_token, raw_refresh

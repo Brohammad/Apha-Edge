@@ -250,7 +250,7 @@ function BrokerConnections() {
 
   const { data: liveStatus } = useQuery({
     queryKey: ['live-trading-status'],
-    queryFn: () => api<LiveTradingStatus>('/broker-connections/live-trading/status', { auth: false }),
+    queryFn: () => api<LiveTradingStatus>('/broker-connections/live-trading/status'),
   })
 
   const { data } = useQuery({

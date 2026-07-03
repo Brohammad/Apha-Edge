@@ -65,6 +65,9 @@ jobs:
           ruff check src tests
           ruff format --check src tests
 
+      - name: Security audit (pip)
+        run: pip install pip-audit && pip-audit -r <(pip freeze)
+
       - name: Run migrations
         working-directory: backend
         run: alembic upgrade head

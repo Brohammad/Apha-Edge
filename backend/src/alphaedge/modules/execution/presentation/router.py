@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from alphaedge.config import settings
-from alphaedge.dependencies import get_current_user_id, get_db_session
+from alphaedge.dependencies import get_current_user_id, get_db_session, require_verified_email
 from alphaedge.modules.execution.application.commands import (
     CancelOrderCommand,
     CreateBrokerConnectionCommand,
@@ -41,6 +41,7 @@ from alphaedge.modules.execution.presentation.schemas import (
 )
 from alphaedge.modules.market_data.infrastructure.models import SQLAlchemyInstrumentRepository
 from alphaedge.modules.portfolio.infrastructure.models import SQLAlchemyPortfolioRepository
+from alphaedge.shared.infrastructure.audit import record_audit
 from alphaedge.shared.presentation.envelope import success_response
 
 broker_connections_router = APIRouter(prefix="/broker-connections", tags=["Execution"])
@@ -97,12 +98,13 @@ def _to_execution(dto: object) -> dict:
 
 
 @broker_connections_router.get("/live-trading/status")
-async def live_trading_status(request: Request):
+async def live_trading_status(
+    request: Request,
+    user_id: UUID = Depends(get_current_user_id),
+):
     return success_response(
         {
             "live_trading_enabled": settings.live_trading_enabled,
-            "stripe_configured": bool(settings.stripe_secret_key),
-            "alpaca_configured": bool(settings.alpaca_api_key and settings.alpaca_api_secret),
         },
         request_id=_request_id(request),
     )
@@ -129,6 +131,7 @@ async def create_broker_connection(
     request: Request,
     session: AsyncSession = Depends(get_db_session),
     user_id: UUID = Depends(get_current_user_id),
+    _verified: object = Depends(require_verified_email),
 ):
     repo = SQLAlchemyBrokerConnectionRepository(session)
     handler = CreateBrokerConnectionHandler(repo)
@@ -139,6 +142,15 @@ async def create_broker_connection(
             credentials=body.credentials,
             is_paper=body.is_paper,
         )
+    )
+    await record_audit(
+        session,
+        user_id=user_id,
+        action="broker_connection.create",
+        resource_type="broker_connection",
+        resource_id=result.id,
+        request=request,
+        changes={"broker_name": body.broker_name, "is_paper": body.is_paper},
     )
     return success_response(_to_connection(result), request_id=_request_id(request))
 
@@ -162,6 +174,7 @@ async def submit_order(
     request: Request,
     session: AsyncSession = Depends(get_db_session),
     user_id: UUID = Depends(get_current_user_id),
+    _verified: object = Depends(require_verified_email),
 ):
     order_repo = SQLAlchemyOrderRepository(session)
     connection_repo = SQLAlchemyBrokerConnectionRepository(session)
@@ -192,6 +205,16 @@ async def submit_order(
     if order_entity:
         order_entity.celery_task_id = task.id
         await order_repo.update(order_entity)
+
+    await record_audit(
+        session,
+        user_id=user_id,
+        action="order.submit",
+        resource_type="order",
+        resource_id=result.id,
+        request=request,
+        changes={"side": body.side, "quantity": str(body.quantity)},
+    )
 
     return success_response(_to_order(result), request_id=_request_id(request))
 

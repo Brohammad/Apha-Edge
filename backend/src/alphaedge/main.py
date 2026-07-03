@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, FastAPI, Request, status
+from fastapi import APIRouter, FastAPI, Header, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -35,7 +35,7 @@ from alphaedge.modules.strategy.presentation.router import (
     indicators_router,
     strategies_router,
 )
-from alphaedge.shared.domain.exceptions import DomainException
+from alphaedge.shared.domain.exceptions import AuthenticationError, DomainException
 from alphaedge.shared.infrastructure.database import engine
 from alphaedge.shared.infrastructure.logging import setup_logging
 from alphaedge.shared.infrastructure.redis import check_redis_health, close_redis
@@ -53,22 +53,34 @@ REQUEST_LATENCY = Histogram(
     ["method", "endpoint"],
 )
 
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Content-Security-Policy": "default-src 'self'; frame-ancestors 'none'",
+}
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
+    settings.validate_security()
     yield
     await close_redis()
     await engine.dispose()
 
 
 def create_app() -> FastAPI:
+    docs_url = None if settings.is_production else "/api/v1/docs"
+    openapi_url = None if settings.is_production else "/api/v1/openapi.json"
+
     app = FastAPI(
         title="AlphaEdge API",
         version="0.1.0",
         description="Quantitative trading research and execution platform",
-        docs_url="/api/v1/docs",
-        openapi_url="/api/v1/openapi.json",
+        docs_url=docs_url,
+        openapi_url=openapi_url,
         lifespan=lifespan,
     )
 
@@ -94,6 +106,8 @@ def create_app() -> FastAPI:
         REQUEST_LATENCY.labels(request.method, endpoint).observe(duration)
 
         response.headers["X-Request-ID"] = request_id
+        for header, value in SECURITY_HEADERS.items():
+            response.headers.setdefault(header, value)
         return response
 
     app.middleware("http")(auth_context_middleware)
@@ -123,13 +137,28 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        details = None if settings.is_production else {"errors": exc.errors()}
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
                 "error": {
                     "code": "VALIDATION_ERROR",
                     "message": "Request validation failed",
-                    "details": {"errors": exc.errors()},
+                    "details": details,
+                    "request_id": getattr(request.state, "request_id", ""),
+                }
+            },
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception):
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "An unexpected error occurred",
+                    "details": None,
                     "request_id": getattr(request.state, "request_id", ""),
                 }
             },
@@ -180,8 +209,8 @@ def register_routes(app: FastAPI) -> None:
             async with engine.connect() as conn:
                 await conn.execute(text("SELECT 1"))
             checks["database"] = "ok"
-        except Exception as e:
-            checks["database"] = f"error: {e}"
+        except Exception:
+            checks["database"] = "error"
 
         checks["redis"] = "ok" if await check_redis_health() else "error"
 
@@ -192,7 +221,33 @@ def register_routes(app: FastAPI) -> None:
         )
 
     @api_v1.get("/metrics", tags=["Observability"], include_in_schema=False)
-    async def metrics():
+    async def metrics(
+        x_metrics_key: str | None = Header(default=None, alias="X-Metrics-Key"),
+        authorization: str | None = Header(default=None, alias="Authorization"),
+    ):
+        if settings.is_production:
+            authorized = False
+            if settings.metrics_api_key and x_metrics_key == settings.metrics_api_key:
+                authorized = True
+            elif authorization and authorization.startswith("Bearer "):
+                from uuid import UUID
+
+                from alphaedge.modules.identity.application.services import TokenService
+                from alphaedge.modules.identity.domain.entities import RoleName
+                from alphaedge.modules.identity.infrastructure.models import SQLAlchemyUserRepository
+                from alphaedge.shared.infrastructure.database import async_session_factory
+
+                try:
+                    payload = TokenService.decode_access_token(authorization[7:])
+                    sub = payload.get("sub")
+                    if sub and isinstance(sub, str):
+                        async with async_session_factory() as session:
+                            user = await SQLAlchemyUserRepository(session).get_by_id(UUID(sub))
+                            authorized = bool(user and user.has_role(RoleName.ADMIN))
+                except Exception:
+                    authorized = False
+            if not authorized:
+                raise AuthenticationError("Metrics endpoint requires authentication")
         return Response(content=generate_latest(), media_type="text/plain")
 
     app.include_router(api_v1)

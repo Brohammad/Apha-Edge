@@ -56,6 +56,6 @@ class TestUserEntity:
 
 class TestPasswordService:
     def test_hash_and_verify(self):
-        hashed = PasswordService.hash("securepassword123")
-        assert PasswordService.verify("securepassword123", hashed)
-        assert not PasswordService.verify("wrongpassword", hashed)
+        hashed = PasswordService.hash("SecurePassword1234")
+        assert PasswordService.verify("SecurePassword1234", hashed)
+        assert not PasswordService.verify("WrongPassword1234", hashed)

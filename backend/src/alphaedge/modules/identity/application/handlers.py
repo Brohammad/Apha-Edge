@@ -1,5 +1,5 @@
-from datetime import UTC, datetime, timedelta
-from uuid import uuid4
+from dataclasses import dataclass
+from uuid import UUID
 
 from alphaedge.config import settings
 from alphaedge.modules.identity.application.commands import (
@@ -15,8 +15,13 @@ from alphaedge.modules.identity.application.commands import (
     RevokeApiKeyCommand,
     TokenPair,
     UserDTO,
+    VerifyEmailCommand,
 )
 from alphaedge.modules.identity.application.oauth_service import ApiKeyService
+from alphaedge.modules.identity.application.password_policy import (
+    validate_password_not_breached,
+    validate_password_strength,
+)
 from alphaedge.modules.identity.application.services import PasswordService, TokenService
 from alphaedge.modules.identity.domain.entities import RefreshToken, User
 from alphaedge.modules.identity.domain.repositories import (
@@ -29,6 +34,12 @@ from alphaedge.shared.domain.exceptions import (
     AuthenticationError,
     ConflictError,
     NotFoundError,
+    ValidationError,
+)
+from alphaedge.shared.infrastructure.login_lockout import (
+    check_login_allowed,
+    clear_login_failures,
+    record_login_failure,
 )
 
 
@@ -38,12 +49,20 @@ class RegisterUserHandler:
         self._role_repo = role_repo
 
     async def handle(self, command: RegisterUserCommand) -> UserDTO:
+        validate_password_strength(command.password)
+        await validate_password_not_breached(command.password)
+
         existing = await self._user_repo.get_by_email(command.email)
         if existing:
-            raise ConflictError(f"User with email {command.email} already exists")
+            raise ConflictError("Registration could not be completed for this email address")
 
         password_hash = PasswordService.hash(command.password)
         user = User.create(command.email, password_hash, command.display_name)
+
+        if settings.is_testing or settings.is_development:
+            user.email_verified = True
+        else:
+            _, user.email_verification_token_hash = TokenService.create_email_verification_token()
 
         default_roles = await self._role_repo.get_default_roles()
         user.roles = default_roles
@@ -65,17 +84,22 @@ class LoginUserHandler:
         self._token_repo = token_repo
 
     async def handle(self, command: LoginUserCommand) -> TokenPair:
+        await check_login_allowed(command.email)
+
         user = await self._user_repo.get_by_email(command.email)
         if not user or not user.password_hash:
+            await record_login_failure(command.email)
             raise AuthenticationError("Invalid email or password")
         if not PasswordService.verify(command.password, user.password_hash):
+            await record_login_failure(command.email)
             raise AuthenticationError("Invalid email or password")
 
         if not user.is_active:
             raise AuthenticationError("Account is deactivated")
 
-        roles = [r.name.value for r in user.roles]
-        access_token = TokenService.create_access_token(str(user.id), roles)
+        await clear_login_failures(command.email)
+
+        access_token = TokenService.create_access_token(str(user.id))
 
         raw_refresh, refresh_entity = TokenService.build_refresh_token(user.id)
         await self._token_repo.save(refresh_entity)
@@ -93,8 +117,15 @@ class RefreshTokenHandler:
         self._token_repo = token_repo
 
     async def handle(self, command: RefreshTokenCommand) -> TokenPair:
+        from datetime import UTC, datetime, timedelta
+        from uuid import uuid4
+
         token_hash = TokenService.hash_token(command.refresh_token)
         stored = await self._token_repo.get_by_hash(token_hash)
+
+        if stored and stored.revoked_at is not None:
+            await self._token_repo.revoke_all_for_user(stored.user_id)
+            raise AuthenticationError("Invalid or expired refresh token")
 
         if not stored or not stored.is_valid:
             raise AuthenticationError("Invalid or expired refresh token")
@@ -105,8 +136,7 @@ class RefreshTokenHandler:
 
         await self._token_repo.revoke(stored.id)
 
-        roles = [r.name.value for r in user.roles]
-        access_token = TokenService.create_access_token(str(user.id), roles)
+        access_token = TokenService.create_access_token(str(user.id))
 
         raw_refresh = TokenService.create_refresh_token_value()
         new_refresh = RefreshToken(
@@ -125,6 +155,8 @@ class LogoutUserHandler:
         self._token_repo = token_repo
 
     async def handle(self, command: LogoutUserCommand) -> None:
+        if not command.refresh_token:
+            return
         token_hash = TokenService.hash_token(command.refresh_token)
         stored = await self._token_repo.get_by_hash(token_hash)
         if stored:
@@ -140,6 +172,36 @@ class GetCurrentUserHandler:
         if not user:
             raise NotFoundError("User", str(query.user_id))
         return UserDTO.from_entity(user)
+
+
+class VerifyEmailHandler:
+    def __init__(self, user_repo: UserRepository) -> None:
+        self._user_repo = user_repo
+
+    async def handle(self, command: VerifyEmailCommand) -> UserDTO:
+        token_hash = TokenService.hash_token(command.token)
+        user = await self._user_repo.get_by_verification_token_hash(token_hash)
+        if not user:
+            raise ValidationError("Invalid or expired verification token")
+        user.email_verified = True
+        user.email_verification_token_hash = None
+        updated = await self._user_repo.update(user)
+        return UserDTO.from_entity(updated)
+
+
+class ResendVerificationHandler:
+    def __init__(self, user_repo: UserRepository) -> None:
+        self._user_repo = user_repo
+
+    async def handle(self, user_id: UUID) -> str | None:
+        user = await self._user_repo.get_by_id(user_id)
+        if not user or user.email_verified:
+            return None
+        _raw, user.email_verification_token_hash = TokenService.create_email_verification_token()
+        await self._user_repo.update(user)
+        if settings.is_development:
+            return _raw
+        return None
 
 
 class CreateApiKeyHandler:
