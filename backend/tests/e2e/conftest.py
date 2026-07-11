@@ -92,10 +92,7 @@ async def wait_for_status(
     timeout: float = E2E_TASK_TIMEOUT,
 ) -> dict:
     """Poll a resource until status reaches an expected value."""
-    if isinstance(expected, str):
-        expected_values = {expected}
-    else:
-        expected_values = set(expected)
+    expected_values = {expected} if isinstance(expected, str) else set(expected)
 
     deadline = asyncio.get_event_loop().time() + timeout
     last_body: dict | None = None

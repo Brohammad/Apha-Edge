@@ -39,8 +39,18 @@ from alphaedge.modules.execution.presentation.schemas import (
     OrderResponse,
     SubmitOrderRequest,
 )
-from alphaedge.modules.market_data.infrastructure.models import SQLAlchemyInstrumentRepository
-from alphaedge.modules.portfolio.infrastructure.models import SQLAlchemyPortfolioRepository
+from alphaedge.modules.market_data.infrastructure.models import (
+    SQLAlchemyBarRepository,
+    SQLAlchemyInstrumentRepository,
+)
+from alphaedge.modules.portfolio.infrastructure.models import (
+    SQLAlchemyHoldingRepository,
+    SQLAlchemyPortfolioRepository,
+)
+from alphaedge.modules.risk.infrastructure.models import (
+    SQLAlchemyRiskLimitRepository,
+    SQLAlchemyRiskSnapshotRepository,
+)
 from alphaedge.shared.infrastructure.audit import record_audit
 from alphaedge.shared.presentation.envelope import success_response
 
@@ -181,8 +191,20 @@ async def submit_order(
     portfolio_repo = SQLAlchemyPortfolioRepository(session)
     instrument_repo = SQLAlchemyInstrumentRepository(session)
     event_repo = SQLAlchemyOrderEventRepository(session)
+    holding_repo = SQLAlchemyHoldingRepository(session)
+    risk_limit_repo = SQLAlchemyRiskLimitRepository(session)
+    risk_snapshot_repo = SQLAlchemyRiskSnapshotRepository(session)
+    bar_repo = SQLAlchemyBarRepository(session)
     handler = SubmitOrderHandler(
-        order_repo, connection_repo, portfolio_repo, instrument_repo, event_repo
+        order_repo,
+        connection_repo,
+        portfolio_repo,
+        instrument_repo,
+        event_repo,
+        holding_repo=holding_repo,
+        risk_limit_repo=risk_limit_repo,
+        risk_snapshot_repo=risk_snapshot_repo,
+        bar_repo=bar_repo,
     )
     result = await handler.handle(
         SubmitOrderCommand(

@@ -1,4 +1,11 @@
-.PHONY: dev dev-down test test-unit test-integration lint migrate seed install build-cpp benchmark frontend-dev frontend-build frontend-lint
+.PHONY: dev dev-down test test-unit test-integration lint migrate seed install build-cpp benchmark \
+        frontend-dev frontend-build frontend-lint setup check ci-local
+
+# ── One-command bootstrap ────────────────────────────────────────────────────
+setup: install build-cpp migrate
+	@echo ""
+	@echo "✓ Backend installed, C++ extension built, migrations applied."
+	@echo "  Run 'make dev' to start the full stack, or 'make frontend-dev' for just the UI."
 
 install:
 	cd backend && pip install -e ".[dev]"
@@ -46,8 +53,23 @@ test-e2e:
 	@echo "Ensure API is running with RATE_LIMIT_ENABLED=false (e2e makes many requests)"
 	cd backend && RATE_LIMIT_ENABLED=false pytest tests/e2e -v -m e2e
 
+# ── Quality gates ────────────────────────────────────────────────────────────
+
+# Fast local check: lint + unit tests only (no DB required)
+check: lint test-unit
+
 lint:
-	cd backend && ruff check src tests && ruff format --check src tests && mypy src
+	cd backend && ruff check src tests && ruff format --check src tests
+
+lint-types:
+	cd backend && mypy src
+
+frontend-lint:
+	cd frontend && npm run lint
+
+# Mirror what CI runs (requires Postgres + Redis running)
+ci-local: lint test-unit test-integration
+	@echo "✓ CI-local complete (lint + unit + integration)"
 
 migrate:
 	cd backend && alembic upgrade head

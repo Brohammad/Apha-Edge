@@ -1,6 +1,5 @@
-from uuid import UUID
-
 from urllib.parse import quote
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -270,9 +269,7 @@ async def oauth_callback(
     session: AsyncSession = Depends(get_db_session),
 ):
     if error:
-        return RedirectResponse(
-            f"{settings.oauth_frontend_callback_url}?error={quote(error)}"
-        )
+        return RedirectResponse(f"{settings.oauth_frontend_callback_url}?error={quote(error)}")
     if not code or not state:
         return RedirectResponse(
             f"{settings.oauth_frontend_callback_url}?error={quote('missing_oauth_code')}"
@@ -291,7 +288,9 @@ async def oauth_callback(
     try:
         user_repo, role_repo, token_repo, oauth_repo, _ = _get_repos(session)
         info = await exchange_code(oauth_provider, code)
-        user = await find_or_create_oauth_user(user_repo, role_repo, oauth_repo, oauth_provider, info)
+        user = await find_or_create_oauth_user(
+            user_repo, role_repo, oauth_repo, oauth_provider, info
+        )
         access_token, refresh_token = await issue_token_pair(user, token_repo)
     except Exception:
         return RedirectResponse(

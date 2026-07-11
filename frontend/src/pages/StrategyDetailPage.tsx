@@ -457,7 +457,8 @@ export default function StrategyDetailPage() {
         </div>
       </div>
 
-      <Modal open={showDeploy} onClose={() => setShowDeploy(false)} title="Deploy to paper">
+      {showDeploy && (
+      <Modal onClose={() => setShowDeploy(false)} title="Deploy to paper">
         <form onSubmit={submitDeploy} className="space-y-4">
           <p className="text-sm text-ink-300">
             Active deployments evaluate signals on each ingested bar and submit paper orders.
@@ -534,6 +535,7 @@ export default function StrategyDetailPage() {
           </div>
         </form>
       </Modal>
+      )}
     </div>
   )
 }

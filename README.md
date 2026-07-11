@@ -734,12 +734,13 @@ AlphaEdge is a full research terminal, but not every architecture diagram featur
 | **Python backtests** | `StrategyBase` sandbox, indicators via `context` | No C++ acceleration |
 | **Short selling** | `allow_short: true` in backtest config | Not applied to paper deployments |
 | **HOLD signals** | Validated in DSL | Ignored at runtime |
-| **Paper deploy** | Bar ingestion → signal → paper order | Paper broker only; no risk-limit gate on auto-orders |
-| **Live trading** | Manual orders via Alpaca when enabled | No strategy-driven live execution |
+| **Paper deploy** | Bar ingestion → signal → paper order (with risk gate) | Paper broker only; no strategy-driven live execution |
+| **Risk gate** | Pre-trade checks on every order: cash, position size, portfolio exposure, daily loss | No real-time price feed — uses latest daily bar close as estimated fill price |
+| **Live trading** | Manual orders via Alpaca when enabled | No strategy-driven live execution; set `LIVE_TRADING_ENABLED=true` after completing `docs/PRODUCTION_CHECKLIST.md` |
 | **Market data** | Seed mock bars + optional Polygon/AV | Production-scale ingestion is bring-your-own keys |
 | **Domain events** | Celery tasks + direct calls | Full outbox/event-bus pattern not everywhere |
 
-Phase 13 status: [docs/ROADMAP.md](docs/ROADMAP.md) (13a–13f complete as of this release).
+Phase 14 (v1.0.0 release candidate) complete. See [docs/ROADMAP.md](docs/ROADMAP.md) and [RELEASE_NOTES.md](RELEASE_NOTES.md) for details.
 
 ---
 

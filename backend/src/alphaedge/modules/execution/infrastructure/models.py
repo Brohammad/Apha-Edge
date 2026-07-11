@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
+from alphaedge.config import settings
 from alphaedge.modules.execution.domain.broker import BrokerPort
 from alphaedge.modules.execution.domain.entities import (
     BrokerConnection,
@@ -28,7 +29,6 @@ from alphaedge.modules.execution.domain.repositories import (
     OrderEventRepository,
     OrderRepository,
 )
-from alphaedge.config import settings
 from alphaedge.modules.execution.infrastructure.alpaca_broker import AlpacaBroker
 from alphaedge.shared.domain.value_objects import Side
 from alphaedge.shared.infrastructure.crypto import decrypt_json, encrypt_json
@@ -245,6 +245,20 @@ class SQLAlchemyOrderRepository(OrderRepository):
             .order_by(OrderModel.created_at.desc())
             .limit(limit)
             .offset(offset)
+        )
+        result = await self._session.execute(stmt)
+        return [_order_to_entity(m) for m in result.scalars().all()]
+
+    async def list_by_portfolio_ids(
+        self, portfolio_ids: list[UUID], *, limit: int = 200
+    ) -> list[Order]:
+        if not portfolio_ids:
+            return []
+        stmt = (
+            select(OrderModel)
+            .where(OrderModel.portfolio_id.in_(portfolio_ids))
+            .order_by(OrderModel.created_at.desc())
+            .limit(limit)
         )
         result = await self._session.execute(stmt)
         return [_order_to_entity(m) for m in result.scalars().all()]

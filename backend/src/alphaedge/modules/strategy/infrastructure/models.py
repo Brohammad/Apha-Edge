@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
+from alphaedge.modules.strategy.domain.deployment import StrategyDeployment
 from alphaedge.modules.strategy.domain.enums import StrategyType, VersionStatus
 from alphaedge.modules.strategy.domain.repositories import (
     IndicatorRepository,
@@ -15,7 +16,6 @@ from alphaedge.modules.strategy.domain.repositories import (
     StrategyRepository,
     StrategyVersionRepository,
 )
-from alphaedge.modules.strategy.domain.deployment import StrategyDeployment
 from alphaedge.modules.strategy.domain.value_objects import (
     IndicatorDefinition,
     Strategy,
@@ -65,7 +65,9 @@ class StrategyDeploymentModel(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "strategy_deployments"
 
     user_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False, index=True)
-    strategy_version_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False, index=True)
+    strategy_version_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), nullable=False, index=True
+    )
     portfolio_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
     broker_connection_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
     instrument_ids: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)

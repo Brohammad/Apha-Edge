@@ -16,9 +16,7 @@ def append_generation_details(
     total = prompt_tokens + completion_tokens
     configured_line = ""
     if llm_provider_configured and llm_provider_configured != llm_provider:
-        configured_line = (
-            f"- **Provider configured:** `{llm_provider_configured}`\n"
-        )
+        configured_line = f"- **Provider configured:** `{llm_provider_configured}`\n"
 
     if llm_provider == "openai":
         model_line = f"- **ChatGPT model:** `{model}`\n"

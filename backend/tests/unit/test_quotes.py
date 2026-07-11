@@ -1,5 +1,6 @@
-import pytest
 from decimal import Decimal
+
+import pytest
 
 from alphaedge.modules.market_data.infrastructure.quotes import (
     AlphaVantageQuoteClient,

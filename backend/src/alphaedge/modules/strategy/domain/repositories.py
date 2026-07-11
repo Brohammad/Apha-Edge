@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
 
+from alphaedge.modules.strategy.domain.deployment import StrategyDeployment
 from alphaedge.modules.strategy.domain.value_objects import (
     IndicatorDefinition,
     Strategy,
     StrategyVersion,
 )
-from alphaedge.modules.strategy.domain.deployment import StrategyDeployment
 
 
 class StrategyRepository(ABC):

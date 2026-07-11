@@ -26,7 +26,9 @@ class PositionSizer:
             qty = (allocation / price).quantize(Decimal("0.0001")) if price > 0 else Decimal("0")
 
         if signal == SignalAction.BUY:
-            max_affordable = (cash / price).quantize(Decimal("0.0001")) if price > 0 else Decimal("0")
+            max_affordable = (
+                (cash / price).quantize(Decimal("0.0001")) if price > 0 else Decimal("0")
+            )
             return min(qty, max_affordable)
 
         # Opening a short position (flat account, allow_short enforced by caller)

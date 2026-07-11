@@ -30,3 +30,10 @@ class AuthenticationError(DomainException):
 class AuthorizationError(DomainException):
     def __init__(self, message: str = "Insufficient permissions") -> None:
         super().__init__(message, code="AUTHORIZATION_ERROR")
+
+
+class RiskRejectedError(DomainException):
+    def __init__(self, message: str, *, stage: str | None = None) -> None:
+        details_msg = message if not stage else f"[{stage}] {message}"
+        super().__init__(details_msg, code="RISK_REJECTED")
+        self.stage = stage

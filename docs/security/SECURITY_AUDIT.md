@@ -51,3 +51,30 @@ Health and metrics endpoints are exempt from application rate limits. Nginx laye
 - [x] Domain errors do not leak stack traces
 - [x] Idempotency keys on order submission
 - [x] Audit log table for mutating operations
+
+---
+
+## Phase 14 Addendum — 2026-07-11
+
+**Scope:** Risk gate enforcement, observability, unhandled exception logging.
+
+### Changes reviewed
+
+| Area | Verdict | Notes |
+|------|---------|-------|
+| CSRF | N/A | AlphaEdge is a Bearer-token SPA. Cookies are not used for authentication; CSRF tokens are not required. |
+| Pre-trade risk gate | Pass | `RiskGate.evaluate` runs on every order before persisting. Six pipeline stages covering cash, position sizing, exposure, and loss limits. Rejected orders return `RISK_REJECTED` without leaking internal details beyond the stage name. |
+| Login lockout | Pass | `login_lockout.py` blocks repeated failed login attempts using a Redis counter with TTL. |
+| Unhandled exceptions | Pass | `unhandled_exception_handler` logs the exception type and path via structlog but returns only `"An unexpected error occurred"` to the client — no stack trace or internal detail exposed in production. |
+| Metrics endpoint | Pass | `/api/v1/metrics` requires either `X-Metrics-Key` header or admin-role JWT in production. Unauthenticated access returns `401`. |
+| Structlog contextvars | Pass | `request_id` is bound per request and cleared before each new request. No cross-request contamination. |
+| Celery signal handlers | Pass | Import from `shared.infrastructure.metrics` only; no user data in metric labels. |
+
+### No new vulnerabilities identified in Phase 14.
+
+### Recommendations (Phase 15+)
+
+1. Add Content-Security-Policy reporting (`report-uri` / `report-to`) to track injection attempts in production.
+2. Evaluate HTTP-only cookie flow for OAuth tokens to remove tokens from URL query string.
+3. Add WAF on ALB before v1.1 launch.
+4. Schedule quarterly `pip-audit` and `npm audit` runs via Dependabot or a scheduled CI job.
