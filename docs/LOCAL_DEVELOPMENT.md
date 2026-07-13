@@ -147,7 +147,7 @@ npx playwright install --with-deps chromium
 | `make dev` | Start full stack via Docker Compose |
 | `make dev-down` | Stop Docker Compose stack |
 | `make check` | Lint + unit tests (fast, no DB) |
-| `make lint` | Ruff + mypy |
+| `make lint` | Ruff (lint + format); run `make lint-types` for mypy |
 | `make test-unit` | Unit tests only |
 | `make test-integration` | Integration tests (starts Docker services) |
 | `make test-integration-local` | Integration tests (assumes services already running) |
