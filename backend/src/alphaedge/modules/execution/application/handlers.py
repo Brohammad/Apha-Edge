@@ -193,18 +193,18 @@ class SubmitOrderHandler:
         if not self._holding_repo or not self._risk_limit_repo:
             return
 
+        holdings = await self._holding_repo.list_by_portfolio(portfolio.id)
+
         estimated_price = limit_price
         if estimated_price is None and self._bar_repo is not None:
             bar = await self._bar_repo.get_latest(instrument_id, Timeframe.D1)
             if bar is not None:
                 estimated_price = bar.close
         if estimated_price is None:
-            holdings_preview = await self._holding_repo.list_by_portfolio(portfolio.id)
-            held = next((h for h in holdings_preview if h.instrument_id == instrument_id), None)
+            held = next((h for h in holdings if h.instrument_id == instrument_id), None)
             if held and held.current_price > 0:
                 estimated_price = held.current_price
 
-        holdings = await self._holding_repo.list_by_portfolio(portfolio.id)
         limits = await self._risk_limit_repo.list_by_portfolio(portfolio.id)
         snapshot = None
         if self._risk_snapshot_repo is not None:
