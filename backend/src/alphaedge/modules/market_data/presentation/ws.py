@@ -7,9 +7,12 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from alphaedge.modules.market_data.domain.enums import Timeframe
 from alphaedge.modules.market_data.infrastructure.models import SQLAlchemyBarRepository
 from alphaedge.shared.infrastructure.database import async_session_factory
+from alphaedge.shared.infrastructure.metrics import WS_CONNECTIONS, WS_MESSAGES
 from alphaedge.shared.presentation.ws_auth import authenticate_websocket
 
 ws_router = APIRouter(tags=["Market Data Streaming"])
+
+_CHANNEL = "market_data"
 
 
 @ws_router.websocket("/ws/market-data")
@@ -20,6 +23,7 @@ async def market_data_stream(websocket: WebSocket):
         return
 
     await websocket.accept(subprotocol=websocket.headers.get("sec-websocket-protocol"))
+    WS_CONNECTIONS.labels(channel=_CHANNEL).inc()
     subscriptions: set[UUID] = set()
 
     try:
@@ -30,10 +34,12 @@ async def market_data_stream(websocket: WebSocket):
                 raw = None
 
             if raw:
+                WS_MESSAGES.labels(channel=_CHANNEL, direction="in").inc()
                 try:
                     msg = json.loads(raw)
                 except json.JSONDecodeError:
                     await websocket.send_json({"type": "error", "message": "Invalid JSON"})
+                    WS_MESSAGES.labels(channel=_CHANNEL, direction="out").inc()
                     continue
 
                 action = msg.get("action")
@@ -44,13 +50,16 @@ async def market_data_stream(websocket: WebSocket):
                     await websocket.send_json(
                         {"type": "subscribed", "instrument_ids": [str(i) for i in subscriptions]}
                     )
+                    WS_MESSAGES.labels(channel=_CHANNEL, direction="out").inc()
                 elif action == "unsubscribe":
                     ids = msg.get("instrument_ids") or []
                     for iid in ids:
                         subscriptions.discard(UUID(str(iid)))
                     await websocket.send_json({"type": "unsubscribed"})
+                    WS_MESSAGES.labels(channel=_CHANNEL, direction="out").inc()
                 elif action == "ping":
                     await websocket.send_json({"type": "pong"})
+                    WS_MESSAGES.labels(channel=_CHANNEL, direction="out").inc()
 
             if subscriptions:
                 async with async_session_factory() as session:
@@ -71,6 +80,9 @@ async def market_data_stream(websocket: WebSocket):
                                     "volume": str(bar.volume),
                                 }
                             )
+                            WS_MESSAGES.labels(channel=_CHANNEL, direction="out").inc()
                 await asyncio.sleep(2)
     except WebSocketDisconnect:
         return
+    finally:
+        WS_CONNECTIONS.labels(channel=_CHANNEL).dec()

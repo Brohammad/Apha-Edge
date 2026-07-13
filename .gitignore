@@ -34,6 +34,8 @@ htmlcov/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+frontend/test-results/
+frontend/playwright-report/
 
 # C++
 backend/cpp/build/
@@ -41,8 +43,7 @@ backend/cpp/*.egg-info/
 *.so
 *.dylib
 *.o
-.env
-.gitignore
+
 # Secrets
 .env.local
 .env.production

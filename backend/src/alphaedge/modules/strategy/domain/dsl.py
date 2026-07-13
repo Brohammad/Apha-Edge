@@ -320,7 +320,17 @@ class StrategyCompiler:
             {"os", "sys", "subprocess", "socket", "pathlib", "shutil", "importlib", "builtins"}
         )
         blocked_calls = frozenset(
-            {"eval", "exec", "compile", "open", "__import__", "getattr", "globals", "locals", "input"}
+            {
+                "eval",
+                "exec",
+                "compile",
+                "open",
+                "__import__",
+                "getattr",
+                "globals",
+                "locals",
+                "input",
+            }
         )
 
         for node in ast.walk(tree):

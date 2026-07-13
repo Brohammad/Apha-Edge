@@ -115,9 +115,7 @@ async def test_paid_listing_requires_purchase(auth_client: AsyncClient, require_
         blocked = await buyer.post(f"/api/v1/marketplace/listings/{listing_id}/clone")
         assert blocked.status_code in (400, 422)
 
-        checkout = await buyer.post(
-            f"/api/v1/payments/marketplace/listings/{listing_id}/checkout"
-        )
+        checkout = await buyer.post(f"/api/v1/payments/marketplace/listings/{listing_id}/checkout")
         assert checkout.status_code == 200
         session_id = checkout.json()["data"]["session_id"]
         assert session_id.startswith("mock_")

@@ -47,7 +47,7 @@ jobs:
       APP_SECRET_KEY: test-app-secret
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v5
         with:
@@ -66,7 +66,10 @@ jobs:
           ruff format --check src tests
 
       - name: Security audit (pip)
-        run: pip install pip-audit && pip-audit -r <(pip freeze)
+        run: |
+          pip install pip-audit
+          pip freeze | grep -vE '^-e |@ file://|alphaedge-cpp' > /tmp/reqs.txt
+          pip-audit -r /tmp/reqs.txt
 
       - name: Run migrations
         working-directory: backend

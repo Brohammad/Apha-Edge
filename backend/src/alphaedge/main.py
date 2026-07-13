@@ -3,11 +3,12 @@ from contextlib import asynccontextmanager
 from typing import Any
 from uuid import uuid4
 
+import structlog.contextvars
 from fastapi import APIRouter, FastAPI, Header, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from prometheus_client import Counter, Histogram, generate_latest
+from prometheus_client import generate_latest
 from sqlalchemy import text
 from starlette.responses import Response
 
@@ -38,21 +39,13 @@ from alphaedge.modules.strategy.presentation.router import (
 )
 from alphaedge.shared.domain.exceptions import AuthenticationError, DomainException
 from alphaedge.shared.infrastructure.database import engine
-from alphaedge.shared.infrastructure.logging import setup_logging
+from alphaedge.shared.infrastructure.logging import get_logger, setup_logging
+from alphaedge.shared.infrastructure.metrics import HTTP_LATENCY, HTTP_REQUESTS
 from alphaedge.shared.infrastructure.redis import check_redis_health, close_redis
 from alphaedge.shared.presentation.auth_context_middleware import auth_context_middleware
 from alphaedge.shared.presentation.rate_limit_middleware import rate_limit_middleware
 
-REQUEST_COUNT = Counter(
-    "http_requests_total",
-    "Total HTTP requests",
-    ["method", "endpoint", "status"],
-)
-REQUEST_LATENCY = Histogram(
-    "http_request_duration_seconds",
-    "HTTP request latency",
-    ["method", "endpoint"],
-)
+logger = get_logger(__name__)
 
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
@@ -78,7 +71,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="AlphaEdge API",
-        version="0.1.0",
+        version="1.0.0",
         description="Quantitative trading research and execution platform",
         docs_url=docs_url,
         openapi_url=openapi_url,
@@ -97,14 +90,16 @@ def create_app() -> FastAPI:
     async def request_context_middleware(request: Request, call_next):
         request_id = str(uuid4())
         request.state.request_id = request_id
+        structlog.contextvars.clear_contextvars()
+        structlog.contextvars.bind_contextvars(request_id=request_id)
         start = time.perf_counter()
 
         response = await call_next(request)
 
         duration = time.perf_counter() - start
         endpoint = request.url.path
-        REQUEST_COUNT.labels(request.method, endpoint, response.status_code).inc()
-        REQUEST_LATENCY.labels(request.method, endpoint).observe(duration)
+        HTTP_REQUESTS.labels(request.method, endpoint, response.status_code).inc()
+        HTTP_LATENCY.labels(request.method, endpoint).observe(duration)
 
         response.headers["X-Request-ID"] = request_id
         for header, value in SECURITY_HEADERS.items():
@@ -124,13 +119,16 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(DomainException)
     async def domain_exception_handler(request: Request, exc: DomainException):
         status_code = _domain_error_status(exc)
+        details = None
+        if exc.code == "RISK_REJECTED" and getattr(exc, "stage", None):
+            details = {"stage": exc.stage}
         return JSONResponse(
             status_code=status_code,
             content={
                 "error": {
                     "code": exc.code,
                     "message": exc.message,
-                    "details": None,
+                    "details": details,
                     "request_id": getattr(request.state, "request_id", ""),
                 }
             },
@@ -153,6 +151,12 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):
+        logger.exception(
+            "unhandled_exception",
+            path=request.url.path,
+            method=request.method,
+            exc_type=type(exc).__name__,
+        )
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
@@ -174,6 +178,7 @@ def _domain_error_status(exc: DomainException) -> int:
         "AUTHENTICATION_ERROR": status.HTTP_401_UNAUTHORIZED,
         "AUTHORIZATION_ERROR": status.HTTP_403_FORBIDDEN,
         "RATE_LIMIT_EXCEEDED": status.HTTP_429_TOO_MANY_REQUESTS,
+        "RISK_REJECTED": status.HTTP_422_UNPROCESSABLE_ENTITY,
     }
     return mapping.get(exc.code, status.HTTP_400_BAD_REQUEST)
 
@@ -236,7 +241,9 @@ def register_routes(app: FastAPI) -> None:
 
                 from alphaedge.modules.identity.application.services import TokenService
                 from alphaedge.modules.identity.domain.entities import RoleName
-                from alphaedge.modules.identity.infrastructure.models import SQLAlchemyUserRepository
+                from alphaedge.modules.identity.infrastructure.models import (
+                    SQLAlchemyUserRepository,
+                )
                 from alphaedge.shared.infrastructure.database import async_session_factory
 
                 try:

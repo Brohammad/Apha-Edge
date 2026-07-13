@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from alphaedge.config import settings
 from alphaedge.dependencies import get_current_user_id, get_db_session
-from alphaedge.shared.domain.exceptions import AuthorizationError
 from alphaedge.modules.marketplace.infrastructure.models import SQLAlchemyStrategyListingRepository
 from alphaedge.modules.payments.application.handlers import (
     CompleteMockCheckoutCommand,
@@ -18,6 +17,7 @@ from alphaedge.modules.payments.application.handlers import (
 from alphaedge.modules.payments.infrastructure.models import (
     SQLAlchemyMarketplacePurchaseRepository,
 )
+from alphaedge.shared.domain.exceptions import AuthorizationError
 from alphaedge.shared.infrastructure.audit import record_audit
 from alphaedge.shared.presentation.envelope import success_response
 

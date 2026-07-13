@@ -46,6 +46,91 @@
           "legendFormat": "{{status}}"
         }
       ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "id": 4,
+      "title": "Risk Gate Rejections",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (stage) (rate(risk_gate_rejections_total[5m]))",
+          "legendFormat": "{{stage}}"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "id": 5,
+      "title": "Risk Gate Rejections (Total)",
+      "type": "stat",
+      "options": { "reduceOptions": { "calcs": ["sum"] } },
+      "targets": [
+        {
+          "expr": "sum(increase(risk_gate_rejections_total[24h]))",
+          "legendFormat": "last 24h"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "id": 6,
+      "title": "Celery Task Rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (task, outcome) (rate(celery_tasks_total[5m]))",
+          "legendFormat": "{{task}} / {{outcome}}"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "id": 7,
+      "title": "Celery Task Latency p95",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (task, le) (rate(celery_task_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{task}}"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "id": 8,
+      "title": "Active WebSocket Connections",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (channel) (websocket_connections_active)",
+          "legendFormat": "{{channel}}"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "msg/s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "id": 9,
+      "title": "WebSocket Message Rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (channel, direction) (rate(websocket_messages_total[5m]))",
+          "legendFormat": "{{channel}} / {{direction}}"
+        }
+      ]
     }
   ],
   "schemaVersion": 39,
@@ -54,5 +139,5 @@
   "time": { "from": "now-1h", "to": "now" },
   "title": "AlphaEdge API",
   "uid": "alphaedge-api",
-  "version": 1
+  "version": 2
 }

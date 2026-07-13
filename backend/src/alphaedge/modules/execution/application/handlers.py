@@ -25,10 +25,22 @@ from alphaedge.modules.execution.domain.repositories import (
 )
 from alphaedge.modules.execution.domain.services import record_event
 from alphaedge.modules.execution.infrastructure.models import get_broker
-from alphaedge.modules.market_data.domain.repositories import InstrumentRepository
-from alphaedge.modules.portfolio.domain.repositories import PortfolioRepository
-from alphaedge.shared.domain.exceptions import AuthorizationError, NotFoundError, ValidationError
+from alphaedge.modules.market_data.domain.enums import Timeframe
+from alphaedge.modules.market_data.domain.repositories import BarRepository, InstrumentRepository
+from alphaedge.modules.portfolio.domain.repositories import HoldingRepository, PortfolioRepository
+from alphaedge.modules.risk.domain.gate import ProposedOrder, RiskGate
+from alphaedge.modules.risk.domain.repositories import RiskLimitRepository, RiskSnapshotRepository
+from alphaedge.shared.domain.exceptions import (
+    AuthorizationError,
+    NotFoundError,
+    RiskRejectedError,
+    ValidationError,
+)
 from alphaedge.shared.domain.value_objects import Side
+from alphaedge.shared.infrastructure.logging import get_logger
+from alphaedge.shared.infrastructure.metrics import RISK_GATE_REJECTIONS
+
+logger = get_logger(__name__)
 
 
 class CreateBrokerConnectionHandler:
@@ -86,12 +98,20 @@ class SubmitOrderHandler:
         portfolio_repo: PortfolioRepository,
         instrument_repo: InstrumentRepository,
         event_repo: OrderEventRepository,
+        holding_repo: HoldingRepository | None = None,
+        risk_limit_repo: RiskLimitRepository | None = None,
+        risk_snapshot_repo: RiskSnapshotRepository | None = None,
+        bar_repo: BarRepository | None = None,
     ) -> None:
         self._order_repo = order_repo
         self._connection_repo = connection_repo
         self._portfolio_repo = portfolio_repo
         self._instrument_repo = instrument_repo
         self._event_repo = event_repo
+        self._holding_repo = holding_repo
+        self._risk_limit_repo = risk_limit_repo
+        self._risk_snapshot_repo = risk_snapshot_repo
+        self._bar_repo = bar_repo
 
     async def handle(self, command: SubmitOrderCommand) -> OrderDTO:
         if command.idempotency_key:
@@ -136,6 +156,15 @@ class SubmitOrderHandler:
 
         limit_price = Decimal(command.limit_price) if command.limit_price else None
         stop_price = Decimal(command.stop_price) if command.stop_price else None
+        quantity = Decimal(command.quantity)
+
+        await self._enforce_risk_gate(
+            portfolio=portfolio,
+            instrument_id=command.instrument_id,
+            side=side,
+            quantity=quantity,
+            limit_price=limit_price,
+        )
 
         order = Order.create(
             portfolio_id=command.portfolio_id,
@@ -143,7 +172,7 @@ class SubmitOrderHandler:
             instrument_id=command.instrument_id,
             side=side,
             order_type=order_type,
-            quantity=Decimal(command.quantity),
+            quantity=quantity,
             limit_price=limit_price,
             stop_price=stop_price,
             idempotency_key=command.idempotency_key,
@@ -151,6 +180,80 @@ class SubmitOrderHandler:
         saved = await self._order_repo.save(order)
         await self._event_repo.save(record_event(saved, OrderEventType.CREATED))
         return OrderDTO.from_entity(saved)
+
+    async def _enforce_risk_gate(
+        self,
+        *,
+        portfolio,
+        instrument_id: UUID,
+        side: Side,
+        quantity: Decimal,
+        limit_price: Decimal | None,
+    ) -> None:
+        if not self._holding_repo or not self._risk_limit_repo:
+            return
+
+        holdings = await self._holding_repo.list_by_portfolio(portfolio.id)
+
+        estimated_price = limit_price
+        if estimated_price is None and self._bar_repo is not None:
+            bar = await self._bar_repo.get_latest(instrument_id, Timeframe.D1)
+            if bar is not None:
+                estimated_price = bar.close
+        if estimated_price is None:
+            held = next((h for h in holdings if h.instrument_id == instrument_id), None)
+            if held and held.current_price > 0:
+                estimated_price = held.current_price
+
+        limits = await self._risk_limit_repo.list_by_portfolio(portfolio.id)
+        snapshot = None
+        if self._risk_snapshot_repo is not None:
+            snapshot = await self._risk_snapshot_repo.get_latest(portfolio.id)
+
+        if estimated_price is None:
+            # Still run cash/sell sizing checks with a sentinel rejection when no price.
+            decision = RiskGate.evaluate(
+                portfolio=portfolio,
+                holdings=holdings,
+                proposed=ProposedOrder(
+                    instrument_id=instrument_id,
+                    side=side,
+                    quantity=quantity,
+                    estimated_price=Decimal("0"),
+                ),
+                limits=limits,
+                latest_snapshot=snapshot,
+            )
+        else:
+            decision = RiskGate.evaluate(
+                portfolio=portfolio,
+                holdings=holdings,
+                proposed=ProposedOrder(
+                    instrument_id=instrument_id,
+                    side=side,
+                    quantity=quantity,
+                    estimated_price=estimated_price,
+                ),
+                limits=limits,
+                latest_snapshot=snapshot,
+            )
+
+        if not decision.allowed:
+            stage = decision.stage or "unknown"
+            RISK_GATE_REJECTIONS.labels(stage=stage).inc()
+            logger.warning(
+                "risk_gate_rejected",
+                portfolio_id=str(portfolio.id),
+                instrument_id=str(instrument_id),
+                side=side.value,
+                quantity=str(quantity),
+                stage=stage,
+                reason=decision.reason,
+            )
+            raise RiskRejectedError(
+                decision.reason or "Order rejected by risk gate",
+                stage=decision.stage,
+            )
 
 
 class ListOrdersHandler:
@@ -176,11 +279,11 @@ class ListOrdersHandler:
             return [OrderDTO.from_entity(o) for o in items], total
 
         portfolios = await self._portfolio_repo.list_by_user(query.user_id, limit=200, offset=0)
-        all_orders: list[OrderDTO] = []
-        for portfolio in portfolios:
-            orders = await self._order_repo.list_by_portfolio(portfolio.id, limit=query.limit)
-            all_orders.extend(OrderDTO.from_entity(o) for o in orders)
-        all_orders.sort(key=lambda o: o.created_at, reverse=True)
+        portfolio_ids = [p.id for p in portfolios]
+        # Fetch enough rows in one query to paginate without N+1 per portfolio.
+        fetch_limit = max(query.offset + query.limit, query.limit)
+        orders = await self._order_repo.list_by_portfolio_ids(portfolio_ids, limit=fetch_limit)
+        all_orders = [OrderDTO.from_entity(o) for o in orders]
         page = all_orders[query.offset : query.offset + query.limit]
         return page, len(all_orders)
 

@@ -40,6 +40,30 @@ class TestLimitEnforcer:
         violations = LimitEnforcer.check(metrics, [limit], [], Decimal("100000"))
         assert any(v["limit_type"] == "max_drawdown" for v in violations)
 
+    def test_max_position_violation(self):
+        from alphaedge.modules.portfolio.domain.enums import RiskLimitType
+        from alphaedge.modules.risk.domain.entities import RiskLimit
+
+        iid = uuid4()
+        pid = uuid4()
+        holdings = [
+            Holding.create(pid, iid, Decimal("500"), Decimal("100"), Decimal("200")),
+        ]
+        equity = Decimal("100000")
+        metrics = RiskCalculator.compute([0.01, 0.02, -0.01])
+        limit = RiskLimit.create(uuid4(), RiskLimitType.MAX_POSITION_PCT, Decimal("0.05"))
+        violations = LimitEnforcer.check(metrics, [limit], holdings, equity)
+        assert any(v["limit_type"] == "max_position_pct" for v in violations)
+
+    def test_no_violation_when_limits_satisfied(self):
+        from alphaedge.modules.portfolio.domain.enums import RiskLimitType
+        from alphaedge.modules.risk.domain.entities import RiskLimit
+
+        metrics = RiskCalculator.compute([0.001, 0.002, 0.001, -0.001, 0.001])
+        limit = RiskLimit.create(uuid4(), RiskLimitType.MAX_DRAWDOWN, Decimal("0.50"))
+        violations = LimitEnforcer.check(metrics, [limit], [], Decimal("100000"))
+        assert violations == []
+
 
 class TestRebalancer:
     def test_generates_trades_toward_target(self):

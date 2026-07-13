@@ -462,3 +462,54 @@ flowchart TD
 | 13f Docs sync | P3 | Small | Onboarding clarity |
 
 **Approval is required before starting each sub-phase.**
+
+---
+
+## Phase 14 — Release Candidate Polish ✅
+
+**Status:** Complete (v1.0.0)
+
+**Goal:** Harden the platform for v1.0.0: enforce the risk gate everywhere, wire observability, fix CI, expand tests, and produce production-ready documentation.
+
+### Deliverables
+
+#### A — Observability
+- [x] `main.py` imports metrics from `shared.infrastructure.metrics`; structlog `request_id` bound via `contextvars`; unhandled exceptions logged
+- [x] Celery `task_prerun`/`task_success`/`task_failure` signals increment `CELERY_TASKS`/`CELERY_TASK_LATENCY` and bind `task_id` to log context
+- [x] WebSocket handler tracks `WS_CONNECTIONS` gauge and `WS_MESSAGES` counter
+- [x] `RISK_GATE_REJECTIONS` counter incremented in `SubmitOrderHandler`
+- [x] Grafana dashboard expanded: risk rejections, Celery throughput/latency, WebSocket panels
+- [x] Prometheus + Grafana added to Docker Compose under `observability` profile
+
+#### B — CI
+- [x] `backend-ci.yml` pip-audit filters editable/local packages
+- [x] `frontend-ci.yml` runs lint + audit + build; Playwright noted as local-only
+- [x] `actions/checkout` bumped to v5 in both workflows
+
+#### C — Tests
+- [x] `tests/unit/test_risk_gate.py` — 8 unit tests covering all gate stages
+- [x] `tests/integration/test_strategy_deployment.py` — CRUD lifecycle integration tests
+- [x] `tests/unit/test_portfolio_risk.py` — max_position LimitEnforcer test added
+- [x] `frontend/e2e/auth.spec.ts`, `marketplace.spec.ts`, `strategy-authoring.spec.ts`
+
+#### D — DX
+- [x] Makefile: `setup`, `check`, `frontend-lint`, `ci-local` targets
+- [x] `.env.example` fully documented with inline guidance
+- [x] `scripts/validate_env.py` — pre-flight environment validation
+
+#### E — Docs & Release
+- [x] `CHANGELOG.md` for v1.0.0
+- [x] `RELEASE_NOTES.md` for v1.0.0 with known limitations
+- [x] `docs/CI.md`, `docs/DEPLOYMENT.md`, `docs/RISK_MODEL.md`, `docs/TROUBLESHOOTING.md`, `docs/LOCAL_DEVELOPMENT.md`
+- [x] `docs/RELEASE_CHECKLIST.md`, `docs/PRODUCTION_CHECKLIST.md`
+- [x] Version bumped to `1.0.0` in `pyproject.toml`, `main.py`, `package.json`
+- [x] README known limitations updated to reflect enforced risk gate
+- [x] Phase 14 added to `ROADMAP.md`
+
+#### F — Security
+- [x] `docs/security/SECURITY_AUDIT.md` Phase 14 addendum
+
+#### G — Performance
+- [x] `docs/PERFORMANCE.md` with baseline notes and known N+1 risks
+
+**Exit criteria:** All CI checks pass; risk gate unit tests pass; version is 1.0.0; documentation is complete.

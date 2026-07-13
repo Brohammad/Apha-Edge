@@ -23,6 +23,7 @@ from alphaedge.modules.strategy.domain.indicators import (
 from alphaedge.modules.strategy.domain.value_objects import Signal, StrategyContext
 from alphaedge.shared.domain.exceptions import ValidationError
 
+
 def _safe_builtins() -> dict[str, object]:
     allowed = {
         "abs",
@@ -86,10 +87,8 @@ def _strategy_namespace() -> dict[str, object]:
 
 def load_python_strategy(source_code: str) -> type[StrategyBase]:
     """Load a user-defined StrategyBase subclass from source in a restricted namespace."""
-    StrategyCompiler = __import__(
-        "alphaedge.modules.strategy.domain.dsl",
-        fromlist=["StrategyCompiler"],
-    ).StrategyCompiler
+    from alphaedge.modules.strategy.domain.dsl import StrategyCompiler
+
     StrategyCompiler.validate_python(source_code)
     if "StrategyBase" not in source_code:
         raise ValidationError("Python strategy must subclass StrategyBase")

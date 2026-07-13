@@ -5,12 +5,12 @@ from uuid import UUID
 
 from alphaedge.modules.backtesting.domain.config import BacktestConfig
 from alphaedge.modules.backtesting.domain.dsl_executor import DSLStrategyExecutor
-from alphaedge.modules.backtesting.domain.python_executor import PythonStrategyExecutor
 from alphaedge.modules.backtesting.domain.entities import BacktestTrade
 from alphaedge.modules.backtesting.domain.enums import TradeSide
 from alphaedge.modules.backtesting.domain.fill_simulator import FillSimulator
 from alphaedge.modules.backtesting.domain.metrics import EquityPoint, MetricsCalculator
 from alphaedge.modules.backtesting.domain.position_sizer import PositionSizer
+from alphaedge.modules.backtesting.domain.python_executor import PythonStrategyExecutor
 from alphaedge.modules.market_data.domain.entities import Bar
 from alphaedge.modules.strategy.domain.dsl import StrategyCompiler
 from alphaedge.modules.strategy.domain.enums import SignalAction, StrategyType

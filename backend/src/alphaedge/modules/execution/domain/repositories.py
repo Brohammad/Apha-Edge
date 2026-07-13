@@ -47,6 +47,12 @@ class OrderRepository(ABC):
         pass
 
     @abstractmethod
+    async def list_by_portfolio_ids(
+        self, portfolio_ids: list[UUID], *, limit: int = 200
+    ) -> list[Order]:
+        pass
+
+    @abstractmethod
     async def count_by_portfolio(self, portfolio_id: UUID) -> int:
         pass
 

@@ -9,7 +9,10 @@ from uuid import UUID
 
 from alphaedge.modules.execution.domain.repositories import BrokerConnectionRepository
 from alphaedge.modules.portfolio.domain.repositories import PortfolioRepository
-from alphaedge.modules.strategy.domain.deployment import StrategyDeployment, require_validated_version
+from alphaedge.modules.strategy.domain.deployment import (
+    StrategyDeployment,
+    require_validated_version,
+)
 from alphaedge.modules.strategy.domain.repositories import (
     StrategyDeploymentRepository,
     StrategyRepository,
@@ -111,7 +114,9 @@ class CreateDeploymentHandler:
         if not connection or connection.user_id != command.user_id:
             raise NotFoundError("BrokerConnection", str(command.broker_connection_id))
         if not connection.is_paper:
-            raise ValidationError("Strategy deployments currently require a paper broker connection")
+            raise ValidationError(
+                "Strategy deployments currently require a paper broker connection"
+            )
 
         qty = Decimal(command.quantity)
         deployment = StrategyDeployment.create(

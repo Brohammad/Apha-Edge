@@ -20,9 +20,7 @@ async def check_login_allowed(email: str) -> None:
         return
     count = int(count_raw.decode() if isinstance(count_raw, bytes) else count_raw)
     if count >= _MAX_FAILURES:
-        raise AuthenticationError(
-            "Too many failed login attempts. Try again later."
-        )
+        raise AuthenticationError("Too many failed login attempts. Try again later.")
 
 
 async def record_login_failure(email: str) -> None:

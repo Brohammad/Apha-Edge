@@ -1,11 +1,10 @@
 """Full-stack end-to-end test against a running API (HTTP, Postgres, Redis, Celery)."""
 
 from datetime import UTC, datetime, timedelta
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import httpx
 import pytest
-
 from tests.e2e.conftest import wait_for_status
 from tests.helpers import seed_instrument, seed_mock_bars
 
@@ -92,9 +91,7 @@ async def test_full_platform_journey(e2e_auth_client: httpx.AsyncClient):
     versions = await client.get(f"/api/v1/strategies/{strategy_id}/versions")
     version_id = versions.json()["data"]["items"][0]["id"]
 
-    validate = await client.post(
-        f"/api/v1/strategies/{strategy_id}/versions/{version_id}/validate"
-    )
+    validate = await client.post(f"/api/v1/strategies/{strategy_id}/versions/{version_id}/validate")
     assert validate.status_code == 200
     assert validate.json()["data"]["status"] == "validated"
 
