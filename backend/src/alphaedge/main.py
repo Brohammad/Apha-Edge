@@ -19,6 +19,7 @@ from alphaedge.modules.execution.presentation.router import (
     broker_connections_router,
     orders_router,
 )
+from alphaedge.modules.execution.presentation.ws import order_ws_router
 from alphaedge.modules.identity.presentation.router import router as auth_router
 from alphaedge.modules.insights.presentation.router import insights_router
 from alphaedge.modules.market_data.presentation.router import (
@@ -200,6 +201,7 @@ def register_routes(app: FastAPI) -> None:
     api_v1.include_router(optimization_router)
     api_v1.include_router(broker_connections_router)
     api_v1.include_router(orders_router)
+    api_v1.include_router(order_ws_router)
     api_v1.include_router(insights_router)
     api_v1.include_router(portfolios_router)
     api_v1.include_router(risk_router)

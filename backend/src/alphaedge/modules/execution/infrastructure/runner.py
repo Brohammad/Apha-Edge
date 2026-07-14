@@ -1,6 +1,7 @@
 import asyncio
 from uuid import UUID
 
+from alphaedge.modules.execution.domain.entities import Order
 from alphaedge.modules.execution.domain.enums import OrderEventType, OrderStatus
 from alphaedge.modules.execution.domain.services import (
     PortfolioUpdater,
@@ -32,7 +33,23 @@ class TransientOrderError(Exception):
     """Raised when order processing should be retried."""
 
 
+async def _notify_order_update(user_id: UUID | None, order: Order, event_type: str) -> None:
+    if user_id is None:
+        return
+    from alphaedge.modules.execution.infrastructure.order_pubsub import publish_order_update
+
+    await publish_order_update(
+        user_id=user_id,
+        order_id=order.id,
+        portfolio_id=order.portfolio_id,
+        status=order.status.value,
+        filled_quantity=str(order.filled_quantity),
+        event_type=event_type,
+    )
+
+
 async def execute_order(order_id: UUID) -> None:
+    notify_user_id: UUID | None = None
     async with async_session_factory() as session:
         order_repo = SQLAlchemyOrderRepository(session)
         connection_repo = SQLAlchemyBrokerConnectionRepository(session)
@@ -49,6 +66,9 @@ async def execute_order(order_id: UUID) -> None:
         if order.status in (OrderStatus.FILLED, OrderStatus.CANCELLED, OrderStatus.REJECTED):
             return
 
+        portfolio_meta = await portfolio_repo.get_by_id(order.portfolio_id)
+        notify_user_id = portfolio_meta.user_id if portfolio_meta else None
+
         connection = await connection_repo.get_by_id(order.broker_connection_id)
         if not connection or not connection.is_active:
             order.mark_rejected("Broker connection inactive or not found")
@@ -57,6 +77,7 @@ async def execute_order(order_id: UUID) -> None:
                 record_event(order, OrderEventType.REJECTED, {"reason": order.error_message})
             )
             await session.commit()
+            await _notify_order_update(notify_user_id, order, "rejected")
             return
 
         instrument = await instrument_repo.get_by_id(order.instrument_id)
@@ -67,6 +88,7 @@ async def execute_order(order_id: UUID) -> None:
                 record_event(order, OrderEventType.REJECTED, {"reason": "instrument_not_found"})
             )
             await session.commit()
+            await _notify_order_update(notify_user_id, order, "rejected")
             return
 
         bar = await bar_repo.get_latest(order.instrument_id, Timeframe.D1)
@@ -90,6 +112,7 @@ async def execute_order(order_id: UUID) -> None:
                 record_event(order, OrderEventType.REJECTED, {"reason": str(exc)})
             )
             await session.commit()
+            await _notify_order_update(notify_user_id, order, "rejected")
             return
         if order.status == OrderStatus.PENDING:
             order.mark_submitted(ack.broker_order_id)
@@ -98,15 +121,17 @@ async def execute_order(order_id: UUID) -> None:
 
         if ack.fill is None:
             await session.commit()
+            await _notify_order_update(notify_user_id, order, "submitted")
             if order.order_type.value == "market":
                 raise TransientOrderError("Market order received no fill")
             return
 
-        portfolio = await portfolio_repo.get_by_id(order.portfolio_id)
+        portfolio = portfolio_meta or await portfolio_repo.get_by_id(order.portfolio_id)
         if not portfolio:
             order.mark_rejected("Portfolio not found")
             await order_repo.update(order)
             await session.commit()
+            await _notify_order_update(notify_user_id, order, "rejected")
             return
 
         holding = await holding_repo.get_by_portfolio_and_instrument(
@@ -130,6 +155,7 @@ async def execute_order(order_id: UUID) -> None:
                 record_event(order, OrderEventType.REJECTED, {"reason": str(exc)})
             )
             await session.commit()
+            await _notify_order_update(notify_user_id, order, "rejected")
             return
 
         order.apply_fill(ack.fill.filled_quantity)
@@ -168,6 +194,7 @@ async def execute_order(order_id: UUID) -> None:
                 await holding_repo.delete(holding.id)
 
         await session.commit()
+        await _notify_order_update(notify_user_id, order, event_type.value)
 
 
 def run_order_sync(order_id: str) -> None:

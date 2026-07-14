@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Ban, Link2, Plus, ScrollText, Send } from 'lucide-react'
 import { api } from '../lib/api'
+import { useOrderWebSocket } from '../lib/useOrderWebSocket'
 import { fmtDateTime, fmtMoney, fmtNum } from '../lib/format'
 import Modal from '../components/Modal'
 import {
@@ -426,11 +427,12 @@ function BrokerConnections() {
 export default function OrdersPage() {
   const qc = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
+  useOrderWebSocket()
 
   const { data, isLoading } = useQuery({
     queryKey: ['orders', 'list'],
     queryFn: () => api<Paginated<Order>>('/orders', { query: { limit: 100 } }),
-    refetchInterval: 8_000,
+    refetchInterval: 30_000,
   })
   const { data: instruments } = useQuery({
     queryKey: ['instruments', 'all'],

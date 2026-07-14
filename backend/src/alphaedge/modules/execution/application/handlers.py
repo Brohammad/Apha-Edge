@@ -334,6 +334,18 @@ class CancelOrderHandler:
         order.mark_cancelled()
         updated = await self._order_repo.update(order)
         await self._event_repo.save(record_event(updated, OrderEventType.CANCELLED))
+        portfolio = await self._portfolio_repo.get_by_id(order.portfolio_id)
+        if portfolio:
+            from alphaedge.modules.execution.infrastructure.order_pubsub import publish_order_update
+
+            await publish_order_update(
+                user_id=portfolio.user_id,
+                order_id=updated.id,
+                portfolio_id=updated.portfolio_id,
+                status=updated.status.value,
+                filled_quantity=str(updated.filled_quantity),
+                event_type="cancelled",
+            )
         return OrderDTO.from_entity(updated)
 
 
