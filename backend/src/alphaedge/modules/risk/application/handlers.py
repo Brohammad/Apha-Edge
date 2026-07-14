@@ -77,6 +77,9 @@ class ComputeRiskHandler:
             metrics=metrics_blob,
         )
         saved = await self._snapshot_repo.save(snapshot)
+        from alphaedge.modules.risk.infrastructure.snapshot_cache import set_cached_snapshot
+
+        await set_cached_snapshot(saved)
 
         return RiskSnapshotDTO.from_entity(saved, violations)
 
@@ -109,6 +112,15 @@ class GetLatestRiskSnapshotHandler:
 
     async def handle(self, query: GetLatestRiskSnapshotQuery) -> RiskSnapshotDTO:
         await _get_owned_portfolio(self._portfolio_repo, query.user_id, query.portfolio_id)
+        from alphaedge.modules.risk.infrastructure.snapshot_cache import get_cached_snapshot
+
+        cached = await get_cached_snapshot(query.portfolio_id)
+        if cached is not None:
+            violations = cached.metrics.get("violations", [])
+            return RiskSnapshotDTO.from_entity(
+                cached, violations if isinstance(violations, list) else []
+            )
+
         snapshot = await self._snapshot_repo.get_latest(query.portfolio_id)
         if not snapshot:
             raise NotFoundError("RiskSnapshot", f"latest for {query.portfolio_id}")

@@ -113,6 +113,15 @@ class SQLAlchemyRiskSnapshotRepository(RiskSnapshotRepository):
         return [_snapshot_to_entity(m) for m in result.scalars().all()]
 
     async def get_latest(self, portfolio_id: UUID) -> RiskSnapshot | None:
+        from alphaedge.modules.risk.infrastructure.snapshot_cache import (
+            get_cached_snapshot,
+            set_cached_snapshot,
+        )
+
+        cached = await get_cached_snapshot(portfolio_id)
+        if cached is not None:
+            return cached
+
         stmt = (
             select(RiskSnapshotModel)
             .where(RiskSnapshotModel.portfolio_id == portfolio_id)
@@ -121,7 +130,11 @@ class SQLAlchemyRiskSnapshotRepository(RiskSnapshotRepository):
         )
         result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
-        return _snapshot_to_entity(model) if model else None
+        if not model:
+            return None
+        entity = _snapshot_to_entity(model)
+        await set_cached_snapshot(entity)
+        return entity
 
 
 class SQLAlchemyRiskLimitRepository(RiskLimitRepository):

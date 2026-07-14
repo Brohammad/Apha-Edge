@@ -77,6 +77,9 @@ class Settings(BaseSettings):
     # Live trading (disabled by default — must be explicitly enabled in production)
     live_trading_enabled: bool = False
 
+    # Risk snapshot Redis cache TTL (seconds)
+    risk_snapshot_cache_ttl_seconds: int = 60
+
     # Stripe marketplace payments
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""

@@ -20,6 +20,13 @@ celery_app.conf.update(
     enable_utc=True,
     task_track_started=True,
     task_acks_late=True,
+    beat_schedule={
+        "compute-all-portfolio-risks-daily": {
+            "task": "risk.compute_all_portfolio_risks",
+            "schedule": 86400.0,
+            "options": {"expires": 3600},
+        },
+    },
     include=[
         "alphaedge.modules.market_data.infrastructure.tasks",
         "alphaedge.modules.backtesting.infrastructure.tasks",
