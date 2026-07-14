@@ -7,6 +7,7 @@ import {
   FlaskConical,
   LayoutDashboard,
   LogOut,
+  Rocket,
   ScrollText,
   ShoppingBag,
   SlidersHorizontal,
@@ -23,6 +24,7 @@ const TAPE_SYMBOLS = ['AAPL', 'MSFT', 'GOOGL', 'SPY'] as const
 const NAV = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/strategies', label: 'Strategies', icon: FlaskConical },
+  { to: '/deployments', label: 'Deployments', icon: Rocket },
   { to: '/backtests', label: 'Backtests', icon: CandlestickChart },
   { to: '/optimizations', label: 'Optimizer', icon: SlidersHorizontal },
   { to: '/portfolios', label: 'Portfolios', icon: Wallet },

@@ -12,6 +12,7 @@ import OptimizationsPage from './pages/OptimizationsPage'
 import OptimizationDetailPage from './pages/OptimizationDetailPage'
 import PortfoliosPage from './pages/PortfoliosPage'
 import PortfolioDetailPage from './pages/PortfolioDetailPage'
+import DeploymentsPage from './pages/DeploymentsPage'
 import OrdersPage from './pages/OrdersPage'
 import InsightsPage from './pages/InsightsPage'
 import InsightDetailPage from './pages/InsightDetailPage'
@@ -56,6 +57,7 @@ export default function App() {
         <Route path="/optimizations/:runId" element={<OptimizationDetailPage />} />
         <Route path="/portfolios" element={<PortfoliosPage />} />
         <Route path="/portfolios/:portfolioId" element={<PortfolioDetailPage />} />
+        <Route path="/deployments" element={<DeploymentsPage />} />
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/insights" element={<InsightsPage />} />
         <Route path="/insights/:insightId" element={<InsightDetailPage />} />
