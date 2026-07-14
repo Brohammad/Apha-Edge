@@ -38,7 +38,7 @@ from alphaedge.shared.domain.exceptions import (
 )
 from alphaedge.shared.domain.value_objects import Side
 from alphaedge.shared.infrastructure.logging import get_logger
-from alphaedge.shared.infrastructure.metrics import RISK_GATE_REJECTIONS
+from alphaedge.shared.infrastructure.metrics import ORDERS_SUBMITTED, RISK_GATE_REJECTIONS
 
 logger = get_logger(__name__)
 
@@ -179,6 +179,7 @@ class SubmitOrderHandler:
         )
         saved = await self._order_repo.save(order)
         await self._event_repo.save(record_event(saved, OrderEventType.CREATED))
+        ORDERS_SUBMITTED.labels(side=side.value, order_type=order_type.value).inc()
         return OrderDTO.from_entity(saved)
 
     async def _enforce_risk_gate(

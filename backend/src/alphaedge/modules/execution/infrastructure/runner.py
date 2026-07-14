@@ -16,7 +16,10 @@ from alphaedge.modules.execution.infrastructure.models import (
     get_broker,
 )
 from alphaedge.modules.market_data.domain.enums import Timeframe
-from alphaedge.modules.market_data.infrastructure.models import SQLAlchemyBarRepository
+from alphaedge.modules.market_data.infrastructure.models import (
+    SQLAlchemyBarRepository,
+    SQLAlchemyInstrumentRepository,
+)
 from alphaedge.modules.portfolio.infrastructure.models import (
     SQLAlchemyHoldingRepository,
     SQLAlchemyPortfolioRepository,
@@ -38,6 +41,7 @@ async def execute_order(order_id: UUID) -> None:
         portfolio_repo = SQLAlchemyPortfolioRepository(session)
         holding_repo = SQLAlchemyHoldingRepository(session)
         bar_repo = SQLAlchemyBarRepository(session)
+        instrument_repo = SQLAlchemyInstrumentRepository(session)
 
         order = await order_repo.get_by_id(order_id)
         if not order:
@@ -55,6 +59,16 @@ async def execute_order(order_id: UUID) -> None:
             await session.commit()
             return
 
+        instrument = await instrument_repo.get_by_id(order.instrument_id)
+        if instrument is None:
+            order.mark_rejected("Instrument not found")
+            await order_repo.update(order)
+            await event_repo.save(
+                record_event(order, OrderEventType.REJECTED, {"reason": "instrument_not_found"})
+            )
+            await session.commit()
+            return
+
         bar = await bar_repo.get_latest(order.instrument_id, Timeframe.D1)
         if bar is None:
             order.retry_count += 1
@@ -68,7 +82,7 @@ async def execute_order(order_id: UUID) -> None:
         broker = get_broker(connection)
 
         try:
-            ack = await broker.submit_order(order, bar.close)
+            ack = await broker.submit_order(order, bar.close, symbol=instrument.symbol)
         except BrokerError as exc:
             order.mark_rejected(str(exc))
             await order_repo.update(order)

@@ -64,18 +64,27 @@ class AlpacaBroker(BrokerPort):
             "Content-Type": "application/json",
         }
 
-    async def submit_order(self, order: Order, market_price: Decimal) -> OrderAck:
+    async def submit_order(
+        self,
+        order: Order,
+        market_price: Decimal,
+        *,
+        symbol: str | None = None,
+    ) -> OrderAck:
         if not self._has_credentials():
             if not self._is_paper:
                 raise BrokerError("Missing Alpaca credentials for live trading")
-            ack = await self._fallback.submit_order(order, market_price)
+            ack = await self._fallback.submit_order(order, market_price, symbol=symbol)
             return OrderAck(
                 broker_order_id=f"alpaca-sim-{ack.broker_order_id}",
                 fill=ack.fill,
             )
 
+        if not symbol:
+            raise BrokerError("Instrument symbol is required for Alpaca orders")
+
         payload = {
-            "symbol": str(order.instrument_id)[:8],
+            "symbol": symbol,
             "qty": str(order.remaining_quantity),
             "side": order.side.value,
             "type": order.order_type.value,

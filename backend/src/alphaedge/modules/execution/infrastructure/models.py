@@ -33,6 +33,7 @@ from alphaedge.modules.execution.infrastructure.alpaca_broker import AlpacaBroke
 from alphaedge.shared.domain.value_objects import Side
 from alphaedge.shared.infrastructure.crypto import decrypt_json, encrypt_json
 from alphaedge.shared.infrastructure.database import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from alphaedge.shared.infrastructure.db_timing import observe_db
 
 
 class BrokerConnectionModel(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -203,6 +204,7 @@ class SQLAlchemyOrderRepository(OrderRepository):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
+    @observe_db("order.save")
     async def save(self, order: Order) -> Order:
         model = OrderModel(
             id=order.id,
@@ -226,6 +228,7 @@ class SQLAlchemyOrderRepository(OrderRepository):
         await self._session.flush()
         return _order_to_entity(model)
 
+    @observe_db("order.get_by_id")
     async def get_by_id(self, order_id: UUID) -> Order | None:
         model = await self._session.get(OrderModel, order_id)
         return _order_to_entity(model) if model else None
@@ -272,6 +275,7 @@ class SQLAlchemyOrderRepository(OrderRepository):
         result = await self._session.execute(stmt)
         return int(result.scalar_one())
 
+    @observe_db("order.update")
     async def update(self, order: Order) -> Order:
         model = await self._session.get(OrderModel, order.id)
         if not model:

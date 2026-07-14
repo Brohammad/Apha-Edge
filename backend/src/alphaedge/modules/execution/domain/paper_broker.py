@@ -20,7 +20,13 @@ class PaperBroker(BrokerPort):
         self._commission = commission_per_trade
         self._partial_fill_ratio = partial_fill_ratio
 
-    async def submit_order(self, order: Order, market_price: Decimal) -> OrderAck:
+    async def submit_order(
+        self,
+        order: Order,
+        market_price: Decimal,
+        *,
+        symbol: str | None = None,
+    ) -> OrderAck:
         if not self._price_triggers(order, market_price):
             return OrderAck(broker_order_id=f"paper-{order.id.hex[:12]}", fill=None)
 

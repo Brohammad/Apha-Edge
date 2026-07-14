@@ -26,7 +26,13 @@ class CancelAck:
 
 class BrokerPort(ABC):
     @abstractmethod
-    async def submit_order(self, order: Order, market_price: Decimal) -> OrderAck:
+    async def submit_order(
+        self,
+        order: Order,
+        market_price: Decimal,
+        *,
+        symbol: str | None = None,
+    ) -> OrderAck:
         pass
 
     @abstractmethod
