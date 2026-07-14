@@ -71,6 +71,10 @@ class Settings(BaseSettings):
     alpaca_paper_base_url: str = "https://paper-api.alpaca.markets"
     alpaca_live_base_url: str = "https://api.alpaca.markets"
 
+    # Indian brokers
+    zerodha_api_key: str = ""
+    zerodha_api_secret: str = ""
+
     # Rate limiting (Redis sliding window)
     rate_limit_enabled: bool = True
 
