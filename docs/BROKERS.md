@@ -20,4 +20,4 @@
 2. Add credential schema in `execution/domain/credentials.py`
 3. Implement `BrokerPort` adapter
 4. Register factory in `execution/infrastructure/registry.py`
-5. Add frontend form in `BrokerConnectionModal`
+5. Add frontend connect flow on the Orders page (`BrokerConnections` section)

@@ -2,6 +2,16 @@
 
 **A quantitative trading platform for designing strategies, backtesting them on historical data, managing portfolios, and placing paper (or live) trades — all from one web terminal.**
 
+> **Portfolio snapshot** · [Case study](docs/CASE_STUDY.md) · [Interview prep](docs/INTERVIEW_TALKING_POINTS.md)
+>
+> | | |
+> |---|---|
+> | **Tests** | 144 automated (unit + integration + e2e) |
+> | **Coverage** | ~58% unit test line coverage |
+> | **Architecture** | 19 bounded contexts, modular monolith |
+> | **Performance** | C++ backtest core ~78× faster than Python (1M-bar benchmark) |
+> | **Stack** | FastAPI · Celery · PostgreSQL · Redis · React 19 · C++17 |
+
 If you have never built a trading system before, think of AlphaEdge as four things in one:
 
 1. **A strategy lab** — write trading rules in a simple YAML-like language or Python
@@ -18,6 +28,7 @@ This README explains what every part does, how to run it locally, and how the pi
 ## Table of contents
 
 - [Complete project guide](#complete-project-guide)
+- [Portfolio & interview materials](#portfolio--interview-materials)
 - [What problem does AlphaEdge solve?](#what-problem-does-alphaedge-solve)
 - [Core concepts (beginner-friendly)](#core-concepts-beginner-friendly)
 - [What you can do in the app](#what-you-can-do-in-the-app)
@@ -37,6 +48,19 @@ This README explains what every part does, how to run it locally, and how the pi
 - [Makefile reference](#makefile-reference)
 - [Further reading](#further-reading)
 - [Tech stack](#tech-stack)
+
+---
+
+## Portfolio & interview materials
+
+| Document | Use |
+|----------|-----|
+| [Case study](docs/CASE_STUDY.md) | Send to recruiters / hiring managers (architecture + decisions) |
+| [Interview talking points](docs/INTERVIEW_TALKING_POINTS.md) | 5 stories for system-design interviews |
+| [Engineering audit](docs/ENGINEERING_AUDIT_V1.md) | Honest capability matrix + technical debt |
+| [Screenshots](docs/screenshots/) | Add PNGs for README hero (see `docs/screenshots/README.md`) |
+
+**Elevator pitch:** *"I built a quant research terminal — DSL compiler, C++ backtest accelerator, pre-trade risk gate, and paper-to-live execution — as a modular monolith with 144 tests."*
 
 ---
 
@@ -821,6 +845,8 @@ Phase 14 (v1.0.0) and Phase 15 polish (v1.1.0) complete. See [docs/ROADMAP.md](d
 
 | Document | Description |
 |----------|-------------|
+| [Case study](docs/CASE_STUDY.md) | Portfolio one-pager for recruiters |
+| [Interview talking points](docs/INTERVIEW_TALKING_POINTS.md) | System-design interview prep |
 | [Strategy guide](docs/STRATEGY_GUIDE.md) | DSL, Python runtime, deployments, backtest config |
 | [Engineering audit (v1.0)](docs/ENGINEERING_AUDIT_V1.md) | Repository audit, security, performance, technical debt |
 | [Architecture](docs/architecture/ARCHITECTURE.md) | Bounded contexts, events, deployment |

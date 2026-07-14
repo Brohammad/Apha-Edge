@@ -28,6 +28,7 @@ const NAV = [
   { to: '/strategies', label: 'Strategies', icon: FlaskConical },
   { to: '/deployments', label: 'Deployments', icon: Rocket },
   { to: '/backtests', label: 'Backtests', icon: CandlestickChart },
+  { to: '/live-chart', label: 'Live chart', icon: Activity },
   { to: '/optimizations', label: 'Optimizer', icon: SlidersHorizontal },
   { to: '/portfolios', label: 'Portfolios', icon: Wallet },
   { to: '/indian-markets', label: 'India', icon: Globe },

@@ -114,10 +114,26 @@ class TestStrategyCompiler:
 
 
 class TestPythonExecutorSandbox:
-    def test_safe_builtins_excludes_import(self):
+    def test_safe_builtins_uses_restricted_import(self):
+        import builtins as std_builtins
+
         from alphaedge.modules.backtesting.domain.python_executor import _safe_builtins
 
-        assert "__import__" not in _safe_builtins()
+        builtins_map = _safe_builtins()
+        assert "__import__" in builtins_map
+        assert builtins_map["__import__"] is not std_builtins.__import__
+
+    def test_restricted_import_blocks_os(self):
+        from alphaedge.modules.backtesting.domain.python_executor import _restricted_import
+
+        with pytest.raises(ImportError, match="not allowed"):
+            _restricted_import("os")
+
+    def test_restricted_import_allows_strategy_domain(self):
+        from alphaedge.modules.backtesting.domain.python_executor import _restricted_import
+
+        mod = _restricted_import("alphaedge.modules.strategy.domain")
+        assert mod is not None
 
 
 class TestSMA:

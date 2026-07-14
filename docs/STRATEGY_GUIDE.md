@@ -145,7 +145,7 @@ class MyStrategy(StrategyBase):
 Python strategies are **not** run in an OS-level sandbox. They execute in the same process as the API/worker via `exec()` with:
 
 - **Static AST validation** — blocks dangerous imports (`os`, `sys`, `subprocess`, …) and calls (`eval`, `exec`, `open`, `__import__`, …)
-- **Restricted builtins** — whitelisted names only; `__import__` is excluded from the runtime namespace
+- **Restricted `__import__`** — only `alphaedge.modules.strategy.domain` (and submodules) may be imported at runtime
 - **Injected API** — `StrategyBase`, indicators, `Signal`, `Decimal` only
 
 **Suitable for:** single-user research, trusted code authors, private deployments.

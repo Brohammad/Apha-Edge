@@ -4,6 +4,7 @@ import { ArrowLeft, Trophy } from 'lucide-react'
 import { api } from '../lib/api'
 import { fmtNum } from '../lib/format'
 import { ErrorNote, PageHeader, Skeleton, StatCard, StatusBadge } from '../components/ui'
+import WalkForwardChart from '../components/WalkForwardChart'
 import type { OptimizationRun, OptimizationTrial, Paginated } from '../lib/types'
 
 export default function OptimizationDetailPage() {
@@ -159,6 +160,12 @@ export default function OptimizationDetailPage() {
           </table>
         )}
       </div>
+
+      {run.method === 'walk_forward' && runId && (
+        <div className="mt-6">
+          <WalkForwardChart runId={runId} />
+        </div>
+      )}
     </div>
   )
 }

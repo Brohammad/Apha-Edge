@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { PageHeader, Skeleton } from './ui'
 
-export default function WalkForwardChart() {
-  const { runId } = useParams<{ runId: string }>()
+export default function WalkForwardChart({ runId: runIdProp }: { runId?: string }) {
+  const { runId: routeRunId } = useParams<{ runId: string }>()
+  const runId = runIdProp ?? routeRunId
   const { data, isLoading } = useQuery({
     queryKey: ['walk-forward', runId],
     enabled: !!runId,

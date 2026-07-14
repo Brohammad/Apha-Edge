@@ -23,6 +23,24 @@ from alphaedge.modules.strategy.domain.indicators import (
 from alphaedge.modules.strategy.domain.value_objects import Signal, StrategyContext
 from alphaedge.shared.domain.exceptions import ValidationError
 
+_ALLOWED_IMPORT_PREFIXES = ("alphaedge.modules.strategy.domain",)
+
+
+def _restricted_import(
+    name: str,
+    globals: dict[str, object] | None = None,
+    locals: dict[str, object] | None = None,
+    fromlist: tuple[str, ...] = (),
+    level: int = 0,
+) -> object:
+    if level != 0:
+        raise ImportError("relative imports are not allowed in strategies")
+    if not any(
+        name == prefix or name.startswith(f"{prefix}.") for prefix in _ALLOWED_IMPORT_PREFIXES
+    ):
+        raise ImportError(f"import of module '{name}' is not allowed")
+    return builtins.__import__(name, globals, locals, list(fromlist), level)
+
 
 def _safe_builtins() -> dict[str, object]:
     allowed = {
@@ -54,7 +72,7 @@ def _safe_builtins() -> dict[str, object]:
         "__build_class__",
         "__name__",
     }
-    out: dict[str, object] = {"Decimal": Decimal}
+    out: dict[str, object] = {"Decimal": Decimal, "__import__": _restricted_import}
     for name in allowed:
         if hasattr(builtins, name):
             out[name] = getattr(builtins, name)
