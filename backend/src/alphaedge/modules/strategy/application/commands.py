@@ -157,3 +157,4 @@ class ValidationResultDTO:
     status: str
     compiled_hash: str
     errors: list[str]
+    error_lines: list[int]

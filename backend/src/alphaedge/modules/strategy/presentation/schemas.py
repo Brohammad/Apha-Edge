@@ -57,6 +57,7 @@ class ValidationResultResponse(BaseModel):
     status: str
     compiled_hash: str
     errors: list[str]
+    error_lines: list[int] = []
 
 
 class CreateDeploymentRequest(BaseModel):

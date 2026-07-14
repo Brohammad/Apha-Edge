@@ -191,6 +191,7 @@ class ValidateStrategyVersionHandler:
             raise NotFoundError("StrategyVersion", str(command.version_id))
 
         errors: list[str] = []
+        error_lines: list[int] = []
         try:
             _, compiled_hash = StrategyCompiler.validate_and_compile(
                 strategy.strategy_type,
@@ -205,17 +206,31 @@ class ValidateStrategyVersionHandler:
                 status=version.status.value,
                 compiled_hash=compiled_hash,
                 errors=[],
+                error_lines=[],
             )
         except DomainException as exc:
             errors.append(exc.message)
+            error_lines.extend(_extract_error_lines(exc.message))
+        except SyntaxError as exc:
+            errors.append(f"Python syntax error: {exc}")
+            if exc.lineno:
+                error_lines.append(exc.lineno)
         except Exception as exc:
             errors.append(str(exc))
+            error_lines.extend(_extract_error_lines(str(exc)))
         return ValidationResultDTO(
             version_id=version.id,
             status=version.status.value,
             compiled_hash=version.compiled_hash or "",
             errors=errors,
+            error_lines=sorted(set(error_lines)),
         )
+
+
+def _extract_error_lines(message: str) -> list[int]:
+    import re
+
+    return [int(m) for m in re.findall(r"line (\d+)", message, flags=re.IGNORECASE)]
 
 
 class ListIndicatorsHandler:

@@ -99,6 +99,7 @@ export interface ValidationResult {
   status: string
   compiled_hash: string
   errors: string[]
+  error_lines?: number[]
 }
 
 export interface Indicator {

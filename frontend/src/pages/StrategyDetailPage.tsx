@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
@@ -64,6 +64,8 @@ const INDICATOR_SNIPPETS: Record<string, string> = {
 
 export default function StrategyDetailPage() {
   const { strategyId } = useParams<{ strategyId: string }>()
+  const [searchParams] = useSearchParams()
+  const collabSessionId = searchParams.get('collab')
   const navigate = useNavigate()
   const qc = useQueryClient()
 
@@ -304,6 +306,7 @@ export default function StrategyDetailPage() {
           <CollabPanel
             strategyId={strategyId!}
             code={code}
+            joinSessionId={collabSessionId}
             onRemoteEdit={(source) => {
               setCode(source)
               setDirty(true)
@@ -402,13 +405,6 @@ export default function StrategyDetailPage() {
               }
             />
           )}
-          {validate.isError && (
-            <ErrorNote
-              message={
-                validate.error instanceof Error ? validate.error.message : 'Validation failed'
-              }
-            />
-          )}
           {validation &&
             (validation.errors.length === 0 ? (
               <div className="flex items-center gap-2 rounded-lg border border-bull-500/40 bg-bull-500/10 px-4 py-3 text-sm text-bull-300">
@@ -423,7 +419,11 @@ export default function StrategyDetailPage() {
                 </p>
                 <ul className="ml-6 list-disc space-y-0.5 font-mono text-xs">
                   {validation.errors.map((err, i) => (
-                    <li key={i}>{err}</li>
+                    <li key={i}>
+                      {validation.error_lines?.[i]
+                        ? `Line ${validation.error_lines[i]}: ${err}`
+                        : err}
+                    </li>
                   ))}
                 </ul>
               </div>

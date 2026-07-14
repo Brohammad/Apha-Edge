@@ -261,6 +261,7 @@ async def validate_strategy_version(
             status=result.status,
             compiled_hash=result.compiled_hash,
             errors=result.errors,
+            error_lines=result.error_lines,
         ).model_dump(),
         request_id=_request_id(request),
     )

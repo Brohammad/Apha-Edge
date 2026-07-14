@@ -116,7 +116,12 @@ async def _evaluate_deployment(
         version.parameters,
     )
     signal = runtime.on_bar(bar)
-    if not signal or signal.action == SignalAction.HOLD:
+    if not signal:
+        return 0
+    if signal.action == SignalAction.HOLD:
+        deployment.record_signal("hold", bar.timestamp)
+        dep_repo = SQLAlchemyStrategyDeploymentRepository(session)
+        await dep_repo.save(deployment)
         return 0
 
     side = Side.BUY if signal.action == SignalAction.BUY else Side.SELL
