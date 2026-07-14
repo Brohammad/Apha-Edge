@@ -40,6 +40,8 @@ async def build_context(
         return await _trade_context(session, user_id, source_type, source_id)
     if insight_type == InsightType.COMPANY_RESEARCH:
         return await _company_research_context(session, user_id, source_type, source_id)
+    if insight_type == InsightType.INSIDER_INTELLIGENCE:
+        return await _insider_context(session, user_id, source_type, source_id)
     raise ValidationError(f"Unsupported insight type: {insight_type.value}")
 
 
@@ -229,3 +231,38 @@ async def _company_research_context(
         base,
         query=f"{instrument.name} ({instrument.symbol}) stock analysis recent news",
     )
+
+
+async def _insider_context(
+    session: AsyncSession,
+    user_id: UUID,
+    source_type: SourceType,
+    source_id: UUID,
+) -> dict[str, object]:
+    from alphaedge.modules.sec.infrastructure.tasks import generate_insider_signals
+
+    if source_type != SourceType.SEC_FILING:
+        raise ValidationError("insider_intelligence requires sec_filing source")
+
+    # source_id encodes CIK in skeleton; use placeholder XML for demo.
+    demo_xml = (
+        "<nonDerivativeTransaction><transactionDate>2026-01-15</transactionDate>"
+        "<transactionCode>P</transactionCode><transactionShares>5000</transactionShares>"
+        "<transactionAcquiredDisposedCode>A</transactionAcquiredDisposedCode>"
+        "<transactionPricePerShare>150.00</transactionPricePerShare></nonDerivativeTransaction>"
+    )
+    signals = generate_insider_signals([demo_xml])
+    return {
+        "cik": str(source_id),
+        "signal_count": len(signals),
+        "signals": [
+            {
+                "issuer": s.issuer,
+                "owner": s.owner,
+                "action": s.action,
+                "shares": str(s.shares),
+                "strength": s.signal_strength,
+            }
+            for s in signals
+        ],
+    }

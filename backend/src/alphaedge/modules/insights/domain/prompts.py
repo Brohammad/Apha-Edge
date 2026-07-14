@@ -73,6 +73,15 @@ PROMPT_TEMPLATES: dict[InsightType, dict[str, str]] = {
             "Provide investment-relevant highlights, risks, and recent developments."
         ),
     },
+    InsightType.INSIDER_INTELLIGENCE: {
+        "v1": (
+            "You are a forensic accounting analyst. Interpret insider trading signals.\n\n"
+            "CIK: {cik}\n"
+            "Signal count: {signal_count}\n"
+            "Signals: {signals}\n\n"
+            "Summarize insider activity patterns and potential market implications."
+        ),
+    },
 }
 
 

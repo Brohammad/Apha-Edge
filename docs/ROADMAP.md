@@ -572,3 +572,16 @@ flowchart TD
 - [x] 18c — Frontend company research insight requests
 
 **Exit criteria:** Company research insights requestable with Tavily enrichment when configured.
+
+---
+
+## Phase 19 — SEC / Insider ✅
+
+**Status:** Complete
+
+### Deliverables
+- [x] 19a — SEC module, `EdgarClient`, `Form4Parser`
+- [x] 19b — Insider monitoring Celery tasks
+- [x] 19c — `insider_intelligence` insight type
+
+**Exit criteria:** Form 4 parsing works; insider signals feed insight pipeline.

@@ -7,6 +7,7 @@ class InsightType(StrEnum):
     RISK_INTERPRETATION = "risk_interpretation"
     TRADE_SUMMARY = "trade_summary"
     COMPANY_RESEARCH = "company_research"
+    INSIDER_INTELLIGENCE = "insider_intelligence"
 
 
 class SourceType(StrEnum):
@@ -17,6 +18,7 @@ class SourceType(StrEnum):
     RISK_SNAPSHOT = "risk_snapshot"
     ORDER = "order"
     INSTRUMENT = "instrument"
+    SEC_FILING = "sec_filing"
 
 
 class InsightStatus(StrEnum):
