@@ -3,13 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { ErrorNote } from '../components/ui'
 
-function readHashParams(): URLSearchParams {
-  const hash = window.location.hash.startsWith('#')
-    ? window.location.hash.slice(1)
-    : window.location.hash
-  return new URLSearchParams(hash)
-}
-
 export default function OAuthCallbackPage() {
   const navigate = useNavigate()
   const { completeOAuthLogin } = useAuth()
@@ -17,21 +10,21 @@ export default function OAuthCallbackPage() {
 
   useEffect(() => {
     const run = async () => {
-      const queryError = new URLSearchParams(window.location.search).get('error')
+      const params = new URLSearchParams(window.location.search)
+      const queryError = params.get('error')
       if (queryError) {
         setError(queryError.replace(/_/g, ' '))
         return
       }
 
-      const access = readHashParams().get('access_token')
-      if (!access) {
-        setError('Sign-in was cancelled or did not return a token.')
+      if (params.get('oauth') !== 'success') {
+        setError('Sign-in was cancelled or did not complete.')
         return
       }
 
       try {
         window.history.replaceState(null, '', window.location.pathname)
-        await completeOAuthLogin(access)
+        await completeOAuthLogin()
         navigate('/', { replace: true })
       } catch (err) {
         setError(err instanceof Error ? err.message : 'OAuth sign-in failed')

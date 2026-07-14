@@ -7,43 +7,45 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { api, loadTokens, saveTokens, setSessionExpiredHandler } from './api'
-import type { TokenPair, User } from './types'
+import { api, saveTokens, setSessionExpiredHandler } from './api'
+import type { User } from './types'
 
 interface AuthContextValue {
   user: User | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string, displayName: string) => Promise<void>
-  completeOAuthLogin: (accessToken: string) => Promise<void>
+  completeOAuthLogin: () => Promise<void>
   logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-function readOAuthAccessToken(): string | null {
-  const hash = window.location.hash.startsWith('#')
-    ? window.location.hash.slice(1)
-    : window.location.hash
-  const params = new URLSearchParams(hash)
-  return params.get('access_token')
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const loadCurrentUser = useCallback(async () => {
+    try {
+      setUser(await api<User>('/auth/me'))
+      return true
+    } catch {
+      setUser(null)
+      return false
+    }
+  }, [])
 
   useEffect(() => {
     setSessionExpiredHandler(() => setUser(null))
 
     const bootstrap = async () => {
-      const oauthAccess = readOAuthAccessToken()
-      if (oauthAccess) {
-        saveTokens({ access_token: oauthAccess, refresh_token: '', token_type: 'bearer' })
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('oauth') === 'success') {
         window.history.replaceState(null, '', window.location.pathname)
       }
 
-      if (!loadTokens() && !oauthAccess) {
+      const ok = await loadCurrentUser()
+      if (!ok) {
         const refreshed = await fetch('/api/v1/auth/refresh', {
           method: 'POST',
           credentials: 'include',
@@ -51,37 +53,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({ refresh_token: '' }),
         })
         if (refreshed.ok) {
-          const body = (await refreshed.json()) as { data: TokenPair }
-          saveTokens(body.data)
+          await loadCurrentUser()
         }
       }
-
-      if (!loadTokens()) {
-        setLoading(false)
-        return
-      }
-
-      try {
-        setUser(await api<User>('/auth/me'))
-      } catch {
-        saveTokens(null)
-      } finally {
-        setLoading(false)
-      }
+      setLoading(false)
     }
 
     void bootstrap()
-  }, [])
+  }, [loadCurrentUser])
 
-  const login = useCallback(async (email: string, password: string) => {
-    const tokens = await api<TokenPair>('/auth/login', {
-      method: 'POST',
-      body: { email, password },
-      auth: false,
-    })
-    saveTokens(tokens)
-    setUser(await api<User>('/auth/me'))
-  }, [])
+  const login = useCallback(
+    async (email: string, password: string) => {
+      await api('/auth/login', {
+        method: 'POST',
+        body: { email, password },
+        auth: false,
+      })
+      await loadCurrentUser()
+    },
+    [loadCurrentUser],
+  )
 
   const register = useCallback(
     async (email: string, password: string, displayName: string) => {
@@ -95,10 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [login],
   )
 
-  const completeOAuthLogin = useCallback(async (accessToken: string) => {
-    saveTokens({ access_token: accessToken, token_type: 'bearer' })
-    setUser(await api<User>('/auth/me'))
-  }, [])
+  const completeOAuthLogin = useCallback(async () => {
+    await loadCurrentUser()
+  }, [loadCurrentUser])
 
   const logout = useCallback(async () => {
     await api('/auth/logout', {

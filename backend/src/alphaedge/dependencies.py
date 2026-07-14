@@ -60,10 +60,18 @@ async def _resolve_auth(
             await session.commit()
             return AuthContext(user_id=user_id, user=user, api_key=key_entity)
 
-    if credentials is None:
+    token_value: str | None = None
+    if credentials is not None:
+        token_value = credentials.credentials
+    else:
+        from alphaedge.shared.presentation.cookies import read_access_token
+
+        token_value = read_access_token(request)
+
+    if token_value is None:
         raise AuthenticationError("Missing authentication token")
 
-    payload = TokenService.decode_access_token(credentials.credentials)
+    payload = TokenService.decode_access_token(token_value)
     sub = payload.get("sub")
     if not sub or not isinstance(sub, str):
         raise AuthenticationError("Invalid token payload")

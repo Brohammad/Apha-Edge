@@ -15,12 +15,12 @@ export class ApiError extends Error {
 
 let accessToken: string | null = null
 
-export function loadTokens(): TokenPair | null {
-  if (!accessToken) return null
-  return { access_token: accessToken, refresh_token: '', token_type: 'bearer' }
+export function loadTokens(): { access_token: string } | null {
+  if (accessToken) return { access_token: accessToken }
+  return { access_token: '' }
 }
 
-export function saveTokens(tokens: TokenPair | null): void {
+export function saveTokens(tokens: { access_token?: string } | null): void {
   accessToken = tokens?.access_token ?? null
 }
 

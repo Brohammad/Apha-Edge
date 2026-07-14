@@ -64,8 +64,10 @@ from alphaedge.shared.domain.exceptions import AuthorizationError, ValidationErr
 from alphaedge.shared.infrastructure.audit import record_audit
 from alphaedge.shared.infrastructure.ws_tickets import issue_ws_ticket
 from alphaedge.shared.presentation.cookies import (
-    clear_refresh_cookie,
+    clear_auth_cookies,
+    read_access_token,
     read_refresh_token,
+    set_access_cookie,
     set_refresh_cookie,
 )
 from alphaedge.shared.presentation.envelope import success_response
@@ -89,14 +91,15 @@ def _token_json_response(
     access_token: str,
     refresh_token: str,
     *,
-    include_refresh_in_body: bool = False,
+    include_tokens_in_body: bool = False,
 ) -> JSONResponse:
     data = TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token if include_refresh_in_body else None,
+        access_token=access_token if include_tokens_in_body else "",
+        refresh_token=refresh_token if include_tokens_in_body else None,
     ).model_dump()
     envelope = success_response(data, request_id=getattr(request.state, "request_id", ""))
     response = JSONResponse(content=envelope)
+    set_access_cookie(response, access_token)
     set_refresh_cookie(response, refresh_token)
     return response
 
@@ -154,7 +157,7 @@ async def login(
         request,
         result.access_token,
         result.refresh_token,
-        include_refresh_in_body=mobile_client,
+        include_tokens_in_body=mobile_client,
     )
 
 
@@ -175,7 +178,7 @@ async def refresh(
         request,
         result.access_token,
         result.refresh_token,
-        include_refresh_in_body=mobile_client,
+        include_tokens_in_body=mobile_client,
     )
 
 
@@ -190,7 +193,7 @@ async def logout(
     handler = LogoutUserHandler(token_repo)
     await handler.handle(LogoutUserCommand(refresh_token=refresh_token or ""))
     response = JSONResponse(status_code=204, content=None)
-    clear_refresh_cookie(response)
+    clear_auth_cookies(response)
     return response
 
 
@@ -297,8 +300,9 @@ async def oauth_callback(
             f"{settings.oauth_frontend_callback_url}?error={quote('oauth_exchange_failed')}"
         )
 
-    redirect_url = f"{settings.oauth_frontend_callback_url}#access_token={quote(access_token)}"
+    redirect_url = f"{settings.oauth_frontend_callback_url}?oauth=success"
     response = RedirectResponse(redirect_url)
+    set_access_cookie(response, access_token)
     set_refresh_cookie(response, refresh_token)
     return response
 
