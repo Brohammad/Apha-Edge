@@ -5,6 +5,26 @@ class BrokerName(StrEnum):
     PAPER = "paper"
     ALPACA = "alpaca"
     IBKR = "ibkr"
+    ZERODHA = "zerodha"
+    ANGELONE = "angelone"
+    UPSTOX = "upstox"
+    BINANCE = "binance"
+    COINBASE = "coinbase"
+
+
+class ProductType(StrEnum):
+    """Indian broker product types (also used for margin routing)."""
+
+    CNC = "CNC"
+    MIS = "MIS"
+    NRML = "NRML"
+
+
+class ExchangeSegment(StrEnum):
+    NSE_EQ = "NSE_EQ"
+    NSE_FO = "NSE_FO"
+    BSE_EQ = "BSE_EQ"
+    BSE_FO = "BSE_FO"
 
 
 class OrderType(StrEnum):

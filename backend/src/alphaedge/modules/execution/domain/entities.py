@@ -5,9 +5,11 @@ from uuid import UUID, uuid4
 
 from alphaedge.modules.execution.domain.enums import (
     BrokerName,
+    ExchangeSegment,
     OrderEventType,
     OrderStatus,
     OrderType,
+    ProductType,
 )
 from alphaedge.shared.domain.exceptions import ValidationError
 from alphaedge.shared.domain.value_objects import Side
@@ -57,6 +59,8 @@ class Order:
     stop_price: Decimal | None = None
     broker_order_id: str | None = None
     idempotency_key: str | None = None
+    product_type: ProductType = ProductType.CNC
+    exchange_segment: ExchangeSegment | None = None
     retry_count: int = 0
     celery_task_id: str | None = None
     error_message: str | None = None
@@ -75,6 +79,8 @@ class Order:
         limit_price: Decimal | None = None,
         stop_price: Decimal | None = None,
         idempotency_key: str | None = None,
+        product_type: ProductType = ProductType.CNC,
+        exchange_segment: ExchangeSegment | None = None,
     ) -> "Order":
         if quantity <= 0:
             raise ValidationError("Order quantity must be positive")
@@ -94,6 +100,8 @@ class Order:
             limit_price=limit_price,
             stop_price=stop_price,
             idempotency_key=idempotency_key,
+            product_type=product_type,
+            exchange_segment=exchange_segment,
         )
 
     @property

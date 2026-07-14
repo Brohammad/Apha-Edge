@@ -35,6 +35,8 @@ class SubmitOrderCommand:
     stop_price: str | None = None
     idempotency_key: str | None = None
     live_trading_acknowledged: bool = False
+    product_type: str = "CNC"
+    exchange_segment: str | None = None
 
 
 @dataclass(frozen=True)
@@ -101,6 +103,8 @@ class OrderDTO:
     status: str
     broker_order_id: str | None
     idempotency_key: str | None
+    product_type: str
+    exchange_segment: str | None
     retry_count: int
     error_message: str | None
     created_at: datetime
@@ -122,6 +126,8 @@ class OrderDTO:
             status=entity.status.value,
             broker_order_id=entity.broker_order_id,
             idempotency_key=entity.idempotency_key,
+            product_type=entity.product_type.value,
+            exchange_segment=entity.exchange_segment.value if entity.exchange_segment else None,
             retry_count=entity.retry_count,
             error_message=entity.error_message,
             created_at=entity.created_at,

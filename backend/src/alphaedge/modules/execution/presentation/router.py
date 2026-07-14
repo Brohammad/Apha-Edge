@@ -89,6 +89,8 @@ def _to_order(dto: object) -> dict:
         status=dto.status,
         broker_order_id=dto.broker_order_id,
         idempotency_key=dto.idempotency_key,
+        product_type=dto.product_type,
+        exchange_segment=dto.exchange_segment,
         retry_count=dto.retry_count,
         error_message=dto.error_message,
         created_at=dto.created_at,
@@ -219,6 +221,8 @@ async def submit_order(
             stop_price=body.stop_price,
             idempotency_key=body.idempotency_key,
             live_trading_acknowledged=body.live_trading_acknowledged,
+            product_type=body.product_type,
+            exchange_segment=body.exchange_segment,
         )
     )
 

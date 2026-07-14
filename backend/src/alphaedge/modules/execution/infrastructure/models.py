@@ -17,9 +17,11 @@ from alphaedge.modules.execution.domain.entities import (
 )
 from alphaedge.modules.execution.domain.enums import (
     BrokerName,
+    ExchangeSegment,
     OrderEventType,
     OrderStatus,
     OrderType,
+    ProductType,
 )
 from alphaedge.modules.execution.domain.repositories import (
     BrokerConnectionRepository,
@@ -58,6 +60,8 @@ class OrderModel(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     status: Mapped[str] = mapped_column(default=OrderStatus.PENDING.value, index=True)
     broker_order_id: Mapped[str | None] = mapped_column(nullable=True)
     idempotency_key: Mapped[str | None] = mapped_column(unique=True, nullable=True)
+    product_type: Mapped[str] = mapped_column(default=ProductType.CNC.value)
+    exchange_segment: Mapped[str | None] = mapped_column(nullable=True)
     retry_count: Mapped[int] = mapped_column(default=0)
     celery_task_id: Mapped[str | None] = mapped_column(nullable=True)
     error_message: Mapped[str | None] = mapped_column(nullable=True)
@@ -114,6 +118,8 @@ def _order_to_entity(m: OrderModel) -> Order:
         stop_price=m.stop_price,
         broker_order_id=m.broker_order_id,
         idempotency_key=m.idempotency_key,
+        product_type=ProductType(m.product_type),
+        exchange_segment=ExchangeSegment(m.exchange_segment) if m.exchange_segment else None,
         retry_count=m.retry_count,
         celery_task_id=m.celery_task_id,
         error_message=m.error_message,
@@ -209,6 +215,8 @@ class SQLAlchemyOrderRepository(OrderRepository):
             status=order.status.value,
             broker_order_id=order.broker_order_id,
             idempotency_key=order.idempotency_key,
+            product_type=order.product_type.value,
+            exchange_segment=order.exchange_segment.value if order.exchange_segment else None,
             retry_count=order.retry_count,
             celery_task_id=order.celery_task_id,
             error_message=order.error_message,

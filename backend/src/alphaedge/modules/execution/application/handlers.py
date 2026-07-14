@@ -17,7 +17,13 @@ from alphaedge.modules.execution.application.commands import (
 )
 from alphaedge.modules.execution.domain.credentials import validate_broker_credentials
 from alphaedge.modules.execution.domain.entities import BrokerConnection, Order
-from alphaedge.modules.execution.domain.enums import BrokerName, OrderEventType, OrderType
+from alphaedge.modules.execution.domain.enums import (
+    BrokerName,
+    ExchangeSegment,
+    OrderEventType,
+    OrderType,
+    ProductType,
+)
 from alphaedge.modules.execution.domain.repositories import (
     BrokerConnectionRepository,
     ExecutionRepository,
@@ -154,6 +160,18 @@ class SubmitOrderHandler:
             order_type = OrderType(command.order_type.lower())
         except ValueError as exc:
             raise ValidationError(f"Invalid order type: {command.order_type}") from exc
+        try:
+            product_type = ProductType(command.product_type.upper())
+        except ValueError as exc:
+            raise ValidationError(f"Invalid product type: {command.product_type}") from exc
+        exchange_segment = None
+        if command.exchange_segment:
+            try:
+                exchange_segment = ExchangeSegment(command.exchange_segment.upper())
+            except ValueError as exc:
+                raise ValidationError(
+                    f"Invalid exchange segment: {command.exchange_segment}"
+                ) from exc
 
         limit_price = Decimal(command.limit_price) if command.limit_price else None
         stop_price = Decimal(command.stop_price) if command.stop_price else None
@@ -177,6 +195,8 @@ class SubmitOrderHandler:
             limit_price=limit_price,
             stop_price=stop_price,
             idempotency_key=command.idempotency_key,
+            product_type=product_type,
+            exchange_segment=exchange_segment,
         )
         saved = await self._order_repo.save(order)
         await self._event_repo.save(record_event(saved, OrderEventType.CREATED))

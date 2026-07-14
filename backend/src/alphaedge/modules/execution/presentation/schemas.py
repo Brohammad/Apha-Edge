@@ -30,6 +30,8 @@ class SubmitOrderRequest(BaseModel):
     stop_price: str | None = None
     idempotency_key: str | None = None
     live_trading_acknowledged: bool = False
+    product_type: str = Field(default="CNC")
+    exchange_segment: str | None = None
 
 
 class OrderResponse(BaseModel):
@@ -46,6 +48,8 @@ class OrderResponse(BaseModel):
     status: str
     broker_order_id: str | None
     idempotency_key: str | None
+    product_type: str
+    exchange_segment: str | None
     retry_count: int
     error_message: str | None
     created_at: datetime
