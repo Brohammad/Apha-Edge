@@ -7,6 +7,7 @@ from alphaedge.modules.execution.domain.entities import BrokerConnection
 from alphaedge.modules.execution.domain.enums import BrokerName
 from alphaedge.modules.execution.domain.paper_broker import PaperBroker
 from alphaedge.modules.execution.infrastructure.alpaca_broker import AlpacaBroker
+from alphaedge.modules.execution.infrastructure.angelone_broker import AngelOneBroker
 from alphaedge.modules.crypto.infrastructure.brokers import BinanceBroker, CoinbaseBroker
 from alphaedge.modules.execution.infrastructure.ibkr_broker import IbkrBroker
 from alphaedge.modules.execution.infrastructure.upstox_broker import UpstoxBroker
