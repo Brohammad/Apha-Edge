@@ -31,6 +31,14 @@ SAMPLE_INSTRUMENTS = [
     ("SPY", "NYSE", "SPDR S&P 500 ETF Trust"),
 ]
 
+INDIAN_INSTRUMENTS = [
+    ("RELIANCE", "NSE", "Reliance Industries Ltd.", "INR"),
+    ("TCS", "NSE", "Tata Consultancy Services Ltd.", "INR"),
+    ("INFY", "NSE", "Infosys Ltd.", "INR"),
+    ("HDFCBANK", "NSE", "HDFC Bank Ltd.", "INR"),
+    ("SBIN", "BSE", "State Bank of India", "INR"),
+]
+
 
 async def seed_roles() -> None:
     async with async_session_factory() as session:
@@ -69,6 +77,31 @@ async def seed_instruments() -> None:
                         name=entity.name,
                         is_active=True,
                         metadata_={},
+                    )
+                )
+        for symbol, exchange, name, currency in INDIAN_INSTRUMENTS:
+            existing = await session.execute(
+                select(InstrumentModel).where(InstrumentModel.symbol == symbol)
+            )
+            if existing.scalar_one_or_none() is None:
+                entity = Instrument.create(
+                    symbol=symbol,
+                    exchange=exchange,
+                    asset_class=AssetClass.EQUITY,
+                    currency=currency,
+                    name=name,
+                    metadata={"country": "IN", "lot_size": "1"},
+                )
+                session.add(
+                    InstrumentModel(
+                        id=entity.id,
+                        symbol=entity.symbol,
+                        exchange=entity.exchange,
+                        asset_class=entity.asset_class.value,
+                        currency=entity.currency,
+                        name=entity.name,
+                        is_active=True,
+                        metadata_=entity.metadata,
                     )
                 )
         await session.commit()
