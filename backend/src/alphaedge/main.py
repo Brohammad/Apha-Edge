@@ -28,7 +28,7 @@ from alphaedge.modules.market_data.presentation.router import (
 )
 from alphaedge.modules.market_data.presentation.ws import ws_router
 from alphaedge.modules.marketplace.presentation.router import marketplace_router
-from alphaedge.modules.optimization.presentation.router import optimization_router
+from alphaedge.modules.optimization.presentation.walkforward_router import walkforward_router
 from alphaedge.modules.organization.presentation.router import organizations_router
 from alphaedge.modules.payments.presentation.router import payments_router
 from alphaedge.modules.portfolio.presentation.router import portfolios_router
@@ -112,6 +112,9 @@ def create_app() -> FastAPI:
 
     register_exception_handlers(app)
     register_routes(app)
+    from alphaedge.shared.infrastructure.tracing import setup_tracing
+
+    setup_tracing(app)
 
     return app
 
@@ -200,6 +203,7 @@ def register_routes(app: FastAPI) -> None:
     api_v1.include_router(analytics_router)
     api_v1.include_router(backtest_router)
     api_v1.include_router(optimization_router)
+    api_v1.include_router(walkforward_router)
     api_v1.include_router(broker_connections_router)
     api_v1.include_router(orders_router)
     api_v1.include_router(order_ws_router)
