@@ -5,6 +5,7 @@ import { ArrowLeft, Download, Gauge, ShieldAlert } from 'lucide-react'
 import { api } from '../lib/api'
 import { fmtDateTime, fmtMoney, fmtNum, fmtPct, signClass } from '../lib/format'
 import Modal from '../components/Modal'
+import PortfolioAnalyticsDashboard from '../components/PortfolioAnalyticsDashboard'
 import {
   ErrorNote,
   PageHeader,
@@ -289,6 +290,8 @@ export default function PortfolioDetailPage() {
             </table>
           )}
         </div>
+
+        <PortfolioAnalyticsDashboard portfolioId={portfolio.id} />
 
         <RiskPanel portfolioId={portfolio.id} />
       </div>
