@@ -35,6 +35,7 @@ celery_app.conf.update(
         "alphaedge.modules.execution.infrastructure.tasks",
         "alphaedge.modules.insights.infrastructure.tasks",
         "alphaedge.modules.risk.infrastructure.tasks",
+        "alphaedge.modules.sec.infrastructure.tasks",
     ],
 )
 
