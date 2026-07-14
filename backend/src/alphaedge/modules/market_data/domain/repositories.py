@@ -11,6 +11,9 @@ class InstrumentRepository(ABC):
     async def get_by_id(self, instrument_id: UUID) -> Instrument | None: ...
 
     @abstractmethod
+    async def list_by_ids(self, instrument_ids: list[UUID]) -> list[Instrument]: ...
+
+    @abstractmethod
     async def get_by_symbol(self, symbol: str) -> Instrument | None: ...
 
     @abstractmethod

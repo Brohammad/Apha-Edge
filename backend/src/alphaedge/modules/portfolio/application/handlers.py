@@ -125,11 +125,9 @@ class GenerateRebalanceHandler:
             self._portfolio_repo, command.user_id, command.portfolio_id
         )
         holdings = await self._holding_repo.list_by_portfolio(command.portfolio_id)
-        symbol_map: dict[UUID, str] = {}
-        for h in holdings:
-            inst = await self._instrument_repo.get_by_id(h.instrument_id)
-            if inst:
-                symbol_map[h.instrument_id] = inst.symbol
+        instrument_ids = list({h.instrument_id for h in holdings})
+        instruments = await self._instrument_repo.list_by_ids(instrument_ids)
+        symbol_map: dict[UUID, str] = {inst.id: inst.symbol for inst in instruments}
         for symbol in command.target_allocation:
             inst = await self._instrument_repo.get_by_symbol(symbol)
             if inst:

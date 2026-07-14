@@ -201,15 +201,16 @@ class SubmitOrderHandler:
             bar = await self._bar_repo.get_latest(instrument_id, Timeframe.D1)
             if bar is not None:
                 estimated_price = bar.close
-        if estimated_price is None:
-            held = next((h for h in holdings if h.instrument_id == instrument_id), None)
-            if held and held.current_price > 0:
-                estimated_price = held.current_price
 
         limits = await self._risk_limit_repo.list_by_portfolio(portfolio.id)
         snapshot = None
         if self._risk_snapshot_repo is not None:
             snapshot = await self._risk_snapshot_repo.get_latest(portfolio.id)
+
+        if estimated_price is None:
+            held = next((h for h in holdings if h.instrument_id == instrument_id), None)
+            if held and held.current_price > 0:
+                estimated_price = held.current_price
 
         if estimated_price is None:
             # Still run cash/sell sizing checks with a sentinel rejection when no price.

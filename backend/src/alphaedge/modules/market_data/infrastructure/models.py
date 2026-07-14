@@ -115,6 +115,13 @@ class SQLAlchemyInstrumentRepository(InstrumentRepository):
         result = await self._session.get(InstrumentModel, instrument_id)
         return _instrument_to_entity(result) if result else None
 
+    async def list_by_ids(self, instrument_ids: list[UUID]) -> list[Instrument]:
+        if not instrument_ids:
+            return []
+        stmt = select(InstrumentModel).where(InstrumentModel.id.in_(instrument_ids))
+        result = await self._session.execute(stmt)
+        return [_instrument_to_entity(m) for m in result.scalars()]
+
     async def get_by_symbol(self, symbol: str) -> Instrument | None:
         stmt = select(InstrumentModel).where(InstrumentModel.symbol == symbol.upper())
         result = await self._session.execute(stmt)

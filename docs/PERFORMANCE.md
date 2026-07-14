@@ -37,7 +37,7 @@ These figures are from a local development machine (M3 MacBook Pro, Docker Compo
 
 **Issue:** Each order submission fetches the latest risk snapshot via a `SELECT ... ORDER BY snapshot_at DESC LIMIT 1`. This is fast with a B-tree index on `(portfolio_id, snapshot_at DESC)` but should be verified in production at scale.
 
-**Mitigation:** Index exists in the Alembic migration. Cache the snapshot in Redis for high-frequency order flows (e.g. strategy deployments generating many signals per second).
+**Mitigation:** Index exists in the Alembic migration. **Status (v1.1):** Latest snapshots are cached in Redis (60 s TTL) via `risk/infrastructure/snapshot_cache.py`.
 
 ---
 
@@ -96,6 +96,6 @@ docker compose exec postgres psql -U alphaedge -c "SELECT query, mean_exec_time 
 
 ## Quick wins for v1.1
 
-1. **Cache risk snapshots in Redis** — 60 s TTL; invalidate on snapshot computation.
+1. **Cache risk snapshots in Redis** — done (60 s TTL; invalidate on snapshot computation).
 2. **WebSocket Redis Pub/Sub** — remove per-connection polling, scale to many connections.
-3. **Selectinload on holdings** — wherever holdings and portfolio are loaded separately in the same request, use SQLAlchemy `selectinload` to batch.
+3. **Selectinload on holdings** — done via batched instrument `list_by_ids` and single holdings fetch in risk gate.
