@@ -2,7 +2,10 @@
 
 **A quantitative trading platform for designing strategies, backtesting them on historical data, managing portfolios, and placing paper (or live) trades — all from one web terminal.**
 
-> **Portfolio snapshot** · [Case study](docs/CASE_STUDY.md) · [Interview prep](docs/INTERVIEW_TALKING_POINTS.md)
+> **Portfolio snapshot** · [Case study](docs/CASE_STUDY.md) · [Interview prep](docs/INTERVIEW_TALKING_POINTS.md) · [Live demo](docs/DEMO_DEPLOY.md)
+>
+> **Try locally:** `make demo` → http://localhost:8080  
+> **Live demo (after VPS deploy):** https://alphaedge.brohammad.tech · `demo@example.com` / `DemoAlphaEdge1!`
 >
 > | | |
 > |---|---|
@@ -830,6 +833,8 @@ Phase 14 (v1.0.0) and Phase 15 polish (v1.1.0) complete. See [docs/ROADMAP.md](d
 | `make dev` | Docker Compose full stack |
 | `make migrate` | Run Alembic migrations |
 | `make seed` | Seed roles, instruments, mock bars |
+| `make demo` | Public demo stack at http://localhost:8080 |
+| `make demo-down` | Stop demo stack |
 | `make frontend-dev` | Start Vite dev server |
 | `make test-unit` | Unit tests only |
 | `make test-integration` | Integration tests with Docker |
@@ -845,6 +850,8 @@ Phase 14 (v1.0.0) and Phase 15 polish (v1.1.0) complete. See [docs/ROADMAP.md](d
 
 | Document | Description |
 |----------|-------------|
+| [Hostinger + free VPS deploy](docs/DEPLOY_HOSTINGER.md) | Publish at `alphaedge.brohammad.tech` |
+| [Demo deploy (local)](docs/DEMO_DEPLOY.md) | One-command local demo (`make demo`) |
 | [Case study](docs/CASE_STUDY.md) | Portfolio one-pager for recruiters |
 | [Interview talking points](docs/INTERVIEW_TALKING_POINTS.md) | System-design interview prep |
 | [Strategy guide](docs/STRATEGY_GUIDE.md) | DSL, Python runtime, deployments, backtest config |

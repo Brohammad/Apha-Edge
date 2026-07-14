@@ -1,0 +1,3 @@
+alphaedge.brohammad.tech {
+    reverse_proxy gateway:80
+}

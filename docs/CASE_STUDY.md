@@ -137,7 +137,7 @@ See [README capability matrix](../README.md#capability-matrix).
 
 ## What I'd do next
 
-1. **Public demo** — seeded read-only deploy (Render/Fly)
+1. **Public demo** — `make demo` → http://localhost:8080 (see [DEMO_DEPLOY.md](DEMO_DEPLOY.md))
 2. **Strategy isolation** — containerized worker per untrusted strategy
 3. **mypy strict in CI** — clear ~400-type backlog
 4. **Market-hours + quote freshness** in execution path
