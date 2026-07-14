@@ -15,6 +15,7 @@ from alphaedge.modules.execution.application.commands import (
     OrderDTO,
     SubmitOrderCommand,
 )
+from alphaedge.modules.execution.domain.credentials import validate_broker_credentials
 from alphaedge.modules.execution.domain.entities import BrokerConnection, Order
 from alphaedge.modules.execution.domain.enums import BrokerName, OrderEventType, OrderType
 from alphaedge.modules.execution.domain.repositories import (
@@ -24,7 +25,7 @@ from alphaedge.modules.execution.domain.repositories import (
     OrderRepository,
 )
 from alphaedge.modules.execution.domain.services import record_event
-from alphaedge.modules.execution.infrastructure.models import get_broker
+from alphaedge.modules.execution.infrastructure.registry import get_broker
 from alphaedge.modules.market_data.domain.enums import Timeframe
 from alphaedge.modules.market_data.domain.repositories import BarRepository, InstrumentRepository
 from alphaedge.modules.portfolio.domain.repositories import HoldingRepository, PortfolioRepository
@@ -55,7 +56,7 @@ class CreateBrokerConnectionHandler:
         connection = BrokerConnection.create(
             user_id=command.user_id,
             broker_name=broker_name,
-            credentials=command.credentials,
+            credentials=validate_broker_credentials(broker_name, command.credentials),
             is_paper=command.is_paper,
         )
         if not connection.is_paper and not settings.live_trading_enabled:

@@ -1,6 +1,12 @@
 from decimal import Decimal
 
-from alphaedge.modules.execution.domain.broker import BrokerPort, CancelAck, FillResponse, OrderAck
+from alphaedge.modules.execution.domain.broker import (
+    BrokerInstrument,
+    BrokerPort,
+    CancelAck,
+    FillResponse,
+    OrderAck,
+)
 from alphaedge.modules.execution.domain.entities import Order
 from alphaedge.modules.execution.domain.enums import OrderType
 from alphaedge.shared.domain.value_objects import Side
@@ -23,9 +29,8 @@ class PaperBroker(BrokerPort):
     async def submit_order(
         self,
         order: Order,
+        instrument: BrokerInstrument,
         market_price: Decimal,
-        *,
-        symbol: str | None = None,
     ) -> OrderAck:
         if not self._price_triggers(order, market_price):
             return OrderAck(broker_order_id=f"paper-{order.id.hex[:12]}", fill=None)

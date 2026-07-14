@@ -1,6 +1,7 @@
 import asyncio
 from uuid import UUID
 
+from alphaedge.modules.execution.domain.broker import BrokerInstrument
 from alphaedge.modules.execution.domain.entities import Order
 from alphaedge.modules.execution.domain.enums import OrderEventType, OrderStatus
 from alphaedge.modules.execution.domain.services import (
@@ -14,8 +15,8 @@ from alphaedge.modules.execution.infrastructure.models import (
     SQLAlchemyExecutionRepository,
     SQLAlchemyOrderEventRepository,
     SQLAlchemyOrderRepository,
-    get_broker,
 )
+from alphaedge.modules.execution.infrastructure.registry import get_broker
 from alphaedge.modules.market_data.domain.enums import Timeframe
 from alphaedge.modules.market_data.infrastructure.models import (
     SQLAlchemyBarRepository,
@@ -101,10 +102,16 @@ async def execute_order(order_id: UUID) -> None:
             await session.commit()
             raise TransientOrderError("No market data available for instrument")
 
+        broker_instrument = BrokerInstrument(
+            symbol=instrument.symbol,
+            exchange=instrument.exchange,
+            currency=instrument.currency,
+            metadata=instrument.metadata,
+        )
         broker = get_broker(connection)
 
         try:
-            ack = await broker.submit_order(order, bar.close, symbol=instrument.symbol)
+            ack = await broker.submit_order(order, broker_instrument, bar.close)
         except BrokerError as exc:
             order.mark_rejected(str(exc))
             await order_repo.update(order)

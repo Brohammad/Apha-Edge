@@ -31,6 +31,7 @@ celery_app.conf.update(
         "alphaedge.modules.market_data.infrastructure.tasks",
         "alphaedge.modules.backtesting.infrastructure.tasks",
         "alphaedge.modules.optimization.infrastructure.tasks",
+        "alphaedge.modules.execution.infrastructure.order_poller",
         "alphaedge.modules.execution.infrastructure.tasks",
         "alphaedge.modules.insights.infrastructure.tasks",
         "alphaedge.modules.risk.infrastructure.tasks",

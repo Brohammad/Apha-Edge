@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from alphaedge.config import settings
-from alphaedge.modules.execution.domain.broker import BrokerPort
 from alphaedge.modules.execution.domain.entities import (
     BrokerConnection,
     Execution,
@@ -22,14 +21,12 @@ from alphaedge.modules.execution.domain.enums import (
     OrderStatus,
     OrderType,
 )
-from alphaedge.modules.execution.domain.paper_broker import PaperBroker
 from alphaedge.modules.execution.domain.repositories import (
     BrokerConnectionRepository,
     ExecutionRepository,
     OrderEventRepository,
     OrderRepository,
 )
-from alphaedge.modules.execution.infrastructure.alpaca_broker import AlpacaBroker
 from alphaedge.shared.domain.value_objects import Side
 from alphaedge.shared.infrastructure.crypto import decrypt_json, encrypt_json
 from alphaedge.shared.infrastructure.database import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -144,14 +141,6 @@ def _event_to_entity(m: OrderEventModel) -> OrderEvent:
         payload=m.payload,
         created_at=m.created_at,
     )
-
-
-def get_broker(connection: BrokerConnection) -> BrokerPort:
-    if connection.broker_name == BrokerName.PAPER:
-        return PaperBroker()
-    if connection.broker_name == BrokerName.ALPACA:
-        return AlpacaBroker.from_credentials(connection.credentials, connection.is_paper)
-    raise ValueError(f"Unsupported broker: {connection.broker_name.value}")
 
 
 class SQLAlchemyBrokerConnectionRepository(BrokerConnectionRepository):

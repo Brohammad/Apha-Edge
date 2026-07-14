@@ -3,6 +3,7 @@ from uuid import uuid4
 
 import pytest
 
+from alphaedge.modules.execution.domain.broker import BrokerInstrument
 from alphaedge.modules.execution.domain.entities import Order
 from alphaedge.modules.execution.domain.enums import OrderType
 from alphaedge.modules.execution.domain.paper_broker import PaperBroker
@@ -10,6 +11,8 @@ from alphaedge.modules.execution.domain.services import PortfolioUpdater
 from alphaedge.modules.portfolio.domain.entities import Portfolio
 from alphaedge.shared.domain.exceptions import ValidationError
 from alphaedge.shared.domain.value_objects import Side
+
+_INST = BrokerInstrument(symbol="AAPL", exchange="NASDAQ", currency="USD", metadata={})
 
 
 @pytest.mark.asyncio
@@ -23,7 +26,7 @@ async def test_paper_broker_market_buy_fill():
         order_type=OrderType.MARKET,
         quantity=Decimal("10"),
     )
-    ack = await broker.submit_order(order, Decimal("100"))
+    ack = await broker.submit_order(order, _INST, Decimal("100"))
     assert ack.fill is not None
     assert ack.fill.filled_quantity == Decimal("10")
     assert ack.fill.fill_price == Decimal("100.01")
@@ -42,7 +45,7 @@ async def test_paper_broker_limit_buy_not_triggered():
         quantity=Decimal("5"),
         limit_price=Decimal("90"),
     )
-    ack = await broker.submit_order(order, Decimal("100"))
+    ack = await broker.submit_order(order, _INST, Decimal("100"))
     assert ack.fill is None
 
 
@@ -58,7 +61,7 @@ async def test_paper_broker_limit_buy_triggered():
         quantity=Decimal("5"),
         limit_price=Decimal("100"),
     )
-    ack = await broker.submit_order(order, Decimal("99"))
+    ack = await broker.submit_order(order, _INST, Decimal("99"))
     assert ack.fill is not None
     assert ack.fill.fill_price == Decimal("99")
 

@@ -6,6 +6,14 @@ from alphaedge.modules.execution.domain.entities import Order
 
 
 @dataclass(frozen=True)
+class BrokerInstrument:
+    symbol: str
+    exchange: str
+    currency: str
+    metadata: dict[str, str]
+
+
+@dataclass(frozen=True)
 class FillResponse:
     filled_quantity: Decimal
     fill_price: Decimal
@@ -29,12 +37,14 @@ class BrokerPort(ABC):
     async def submit_order(
         self,
         order: Order,
+        instrument: BrokerInstrument,
         market_price: Decimal,
-        *,
-        symbol: str | None = None,
     ) -> OrderAck:
         pass
 
     @abstractmethod
     async def cancel_order(self, order: Order) -> CancelAck:
         pass
+
+    async def get_order_status(self, order: Order) -> OrderAck | None:
+        return None

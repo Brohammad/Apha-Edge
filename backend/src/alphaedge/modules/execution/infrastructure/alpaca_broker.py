@@ -6,9 +6,14 @@ from typing import Any
 import httpx
 
 from alphaedge.config import settings
-from alphaedge.modules.execution.domain.broker import BrokerPort, CancelAck, FillResponse, OrderAck
+from alphaedge.modules.execution.domain.broker import (
+    BrokerInstrument,
+    BrokerPort,
+    CancelAck,
+    FillResponse,
+    OrderAck,
+)
 from alphaedge.modules.execution.domain.entities import Order
-from alphaedge.modules.execution.domain.enums import OrderType
 from alphaedge.modules.execution.domain.paper_broker import PaperBroker
 
 
@@ -67,24 +72,20 @@ class AlpacaBroker(BrokerPort):
     async def submit_order(
         self,
         order: Order,
+        instrument: BrokerInstrument,
         market_price: Decimal,
-        *,
-        symbol: str | None = None,
     ) -> OrderAck:
         if not self._has_credentials():
             if not self._is_paper:
                 raise BrokerError("Missing Alpaca credentials for live trading")
-            ack = await self._fallback.submit_order(order, market_price, symbol=symbol)
+            ack = await self._fallback.submit_order(order, instrument, market_price)
             return OrderAck(
                 broker_order_id=f"alpaca-sim-{ack.broker_order_id}",
                 fill=ack.fill,
             )
 
-        if not symbol:
-            raise BrokerError("Instrument symbol is required for Alpaca orders")
-
         payload = {
-            "symbol": symbol,
+            "symbol": instrument.symbol,
             "qty": str(order.remaining_quantity),
             "side": order.side.value,
             "type": order.order_type.value,
@@ -107,11 +108,27 @@ class AlpacaBroker(BrokerPort):
                 )
             data = resp.json()
 
+        return self._ack_from_alpaca(data, order, market_price)
+
+    async def get_order_status(self, order: Order) -> OrderAck | None:
+        if not self._has_credentials() or not order.broker_order_id:
+            return None
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(
+                f"{self._base_url}/v2/orders/{order.broker_order_id}",
+                headers=self._headers(),
+            )
+        if resp.status_code >= 400:
+            return None
+        return self._ack_from_alpaca(resp.json(), order, Decimal("0"))
+
+    def _ack_from_alpaca(
+        self, data: dict[str, Any], order: Order, market_price: Decimal
+    ) -> OrderAck:
         broker_id = str(data.get("id", order.id))
         filled_qty = Decimal(str(data.get("filled_qty") or "0"))
         if filled_qty <= 0:
             return OrderAck(broker_order_id=broker_id, fill=None)
-
         fill_price = Decimal(str(data.get("filled_avg_price") or market_price))
         fill = FillResponse(
             filled_quantity=filled_qty,
