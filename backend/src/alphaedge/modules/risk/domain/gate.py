@@ -7,9 +7,11 @@ from dataclasses import dataclass
 from decimal import Decimal
 from uuid import UUID, uuid4
 
+from alphaedge.modules.execution.domain.enums import ProductType
 from alphaedge.modules.portfolio.domain.entities import Holding, Portfolio
 from alphaedge.modules.portfolio.domain.enums import RiskLimitType
 from alphaedge.modules.risk.domain.entities import RiskLimit, RiskSnapshot
+from alphaedge.modules.risk.domain.mis_margin import estimate_required_margin
 from alphaedge.shared.domain.value_objects import Side
 
 
@@ -19,6 +21,7 @@ class ProposedOrder:
     side: Side
     quantity: Decimal
     estimated_price: Decimal
+    product_type: str = "CNC"
 
 
 @dataclass(frozen=True)
@@ -100,10 +103,19 @@ class RiskGate:
                 )
 
         if proposed.side == Side.BUY and order_notional > portfolio.cash_balance:
-            return RiskGateResult.reject(
-                "cash_availability",
-                f"Insufficient cash: need {order_notional}, have {portfolio.cash_balance}",
-            )
+            required_cash = order_notional
+            try:
+                pt = ProductType(proposed.product_type.upper())
+                required_cash = estimate_required_margin(
+                    notional=order_notional, product_type=pt
+                )
+            except ValueError:
+                pass
+            if required_cash > portfolio.cash_balance:
+                return RiskGateResult.reject(
+                    "cash_availability",
+                    f"Insufficient cash/margin: need {required_cash}, have {portfolio.cash_balance}",
+                )
 
         if proposed.side == Side.SELL:
             held = next(

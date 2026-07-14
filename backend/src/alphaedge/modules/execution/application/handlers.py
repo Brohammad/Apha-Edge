@@ -183,6 +183,7 @@ class SubmitOrderHandler:
             side=side,
             quantity=quantity,
             limit_price=limit_price,
+            product_type=product_type.value,
         )
 
         order = Order.create(
@@ -211,6 +212,7 @@ class SubmitOrderHandler:
         side: Side,
         quantity: Decimal,
         limit_price: Decimal | None,
+        product_type: str = "CNC",
     ) -> None:
         if not self._holding_repo or not self._risk_limit_repo:
             return
@@ -243,6 +245,7 @@ class SubmitOrderHandler:
                     side=side,
                     quantity=quantity,
                     estimated_price=Decimal("0"),
+                    product_type=product_type,
                 ),
                 limits=limits,
                 latest_snapshot=snapshot,
@@ -256,6 +259,7 @@ class SubmitOrderHandler:
                     side=side,
                     quantity=quantity,
                     estimated_price=estimated_price,
+                    product_type=product_type,
                 ),
                 limits=limits,
                 latest_snapshot=snapshot,

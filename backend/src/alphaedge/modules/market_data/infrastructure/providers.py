@@ -3,6 +3,7 @@ from decimal import Decimal
 
 import httpx
 
+from alphaedge.config import settings
 from alphaedge.modules.market_data.infrastructure.indian_provider import IndianMarketDataProvider
 from alphaedge.modules.market_data.domain.enums import Timeframe
 from alphaedge.modules.market_data.domain.providers import MarketDataProvider
