@@ -17,6 +17,7 @@ import {
 import type {
   BacktestRun,
   InsightRequest,
+  Instrument,
   Paginated,
   Strategy,
 } from '../lib/types'
@@ -26,13 +27,15 @@ const TYPE_LABELS: Record<string, string> = {
   performance_report: 'Performance report',
   risk_interpretation: 'Risk interpretation',
   trade_summary: 'Trade summary',
+  company_research: 'Company research',
 }
 
 function NewInsightModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
-  const [kind, setKind] = useState<'strategy' | 'backtest'>('strategy')
+  const [kind, setKind] = useState<'strategy' | 'backtest' | 'research'>('strategy')
   const [strategyId, setStrategyId] = useState('')
   const [backtestId, setBacktestId] = useState('')
+  const [instrumentId, setInstrumentId] = useState('')
 
   const { data: strategies } = useQuery({
     queryKey: ['strategies', 'list'],
@@ -43,19 +46,35 @@ function NewInsightModal({ onClose }: { onClose: () => void }) {
     queryKey: ['backtests', 'completed'],
     queryFn: () => api<Paginated<BacktestRun>>('/backtest-runs', { query: { limit: 100 } }),
   })
+  const { data: instruments } = useQuery({
+    queryKey: ['instruments', 'research'],
+    queryFn: () => api<Paginated<Instrument>>('/instruments', { query: { limit: 100 } }),
+  })
   const completedRuns = (backtests?.items ?? []).filter((r) => r.status === 'completed')
 
   const submit = useMutation({
-    mutationFn: () =>
-      kind === 'strategy'
-        ? api<InsightRequest>('/insights/strategy-explain', {
-            method: 'POST',
-            body: { strategy_id: strategyId },
-          })
-        : api<InsightRequest>('/insights/performance-report', {
-            method: 'POST',
-            body: { backtest_run_id: backtestId },
-          }),
+    mutationFn: () => {
+      if (kind === 'strategy') {
+        return api<InsightRequest>('/insights/strategy-explain', {
+          method: 'POST',
+          body: { strategy_id: strategyId },
+        })
+      }
+      if (kind === 'backtest') {
+        return api<InsightRequest>('/insights/performance-report', {
+          method: 'POST',
+          body: { backtest_run_id: backtestId },
+        })
+      }
+      return api<InsightRequest>('/insights', {
+        method: 'POST',
+        body: {
+          insight_type: 'company_research',
+          source_type: 'instrument',
+          source_id: instrumentId,
+        },
+      })
+    },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['insights'] })
       onClose()
@@ -75,7 +94,7 @@ function NewInsightModal({ onClose }: { onClose: () => void }) {
             message={submit.error instanceof Error ? submit.error.message : 'Request failed'}
           />
         )}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <button
             type="button"
             onClick={() => setKind('strategy')}
@@ -98,6 +117,17 @@ function NewInsightModal({ onClose }: { onClose: () => void }) {
           >
             Performance report
           </button>
+          <button
+            type="button"
+            onClick={() => setKind('research')}
+            className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+              kind === 'research'
+                ? 'border-volt-500 bg-volt-500/10 text-volt-300'
+                : 'border-ink-600 text-ink-300 hover:border-ink-400'
+            }`}
+          >
+            Company research
+          </button>
         </div>
 
         {kind === 'strategy' ? (
@@ -119,7 +149,7 @@ function NewInsightModal({ onClose }: { onClose: () => void }) {
               ))}
             </select>
           </div>
-        ) : (
+        ) : kind === 'backtest' ? (
           <div>
             <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-widest text-ink-300">
               Completed backtest
@@ -134,6 +164,25 @@ function NewInsightModal({ onClose }: { onClose: () => void }) {
               {completedRuns.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div>
+            <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-widest text-ink-300">
+              Instrument
+            </label>
+            <select
+              required
+              className={inputCls}
+              value={instrumentId}
+              onChange={(e) => setInstrumentId(e.target.value)}
+            >
+              <option value="">Select symbol…</option>
+              {(instruments?.items ?? []).map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.symbol} — {i.name}
                 </option>
               ))}
             </select>

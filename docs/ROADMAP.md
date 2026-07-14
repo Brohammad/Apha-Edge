@@ -559,3 +559,16 @@ flowchart TD
 - [x] 17i — Frontend INR formatting + exchange filter (`/indian-markets`)
 
 **Exit criteria:** Indian symbols seedable; orders accept product type; broker stubs registered; INR UI available.
+
+---
+
+## Phase 18 — Tavily Research ✅
+
+**Status:** Complete
+
+### Deliverables
+- [x] 18a — `ResearchProvider` + `TavilyResearchProvider`
+- [x] 18b — Context enrichment in `context_loader`
+- [x] 18c — Frontend company research insight requests
+
+**Exit criteria:** Company research insights requestable with Tavily enrichment when configured.
