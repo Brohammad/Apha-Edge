@@ -48,6 +48,7 @@ celery_app.conf.update(
         "alphaedge.modules.sec.infrastructure.tasks",
         "alphaedge.modules.analytics.infrastructure.tasks",
         "alphaedge.modules.events.infrastructure.dispatcher",
+        "alphaedge.modules.deployment.infrastructure.monitoring",
     ],
 )
 

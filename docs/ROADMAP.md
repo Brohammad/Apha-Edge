@@ -598,3 +598,84 @@ flowchart TD
 - [x] 20c — `AssistantPage` chat UI
 
 **Exit criteria:** Users can chat with research assistant and request loss analysis.
+
+---
+
+## Phase 21 — Portfolio Analytics ✅
+
+- [x] 21a — Extended metrics (factor exposure, tracking error, IR)
+- [x] 21b — Sector/country/style exposure API
+- [x] 21c — Analytics snapshots daily schedule
+
+## Phase 22 — Visualizations ✅
+
+- [x] 22a — Institutional chart components
+- [x] 22b — Backtest analytics charts
+- [x] 22c — Portfolio analytics dashboard
+- [x] 22d — OHLCV candlestick with WS feed
+
+## Phase 23 — Event-Driven ✅
+
+- [x] 23a — Outbox dispatcher worker
+- [x] 23b — Domain event subscribers
+- [x] 23c — Event replay CLI
+
+## Phase 24 — Strategy Language ✅
+
+- [x] 24a — Custom indicators in DSL
+- [x] 24b — Multi-timeframe runtime context
+- [x] 24c — Strategy template gallery
+- [x] 24d — Portfolio-level strategy type
+
+## Phase 25 — Risk Engine ✅
+
+- [x] 25a — Sector/concentration limits
+- [x] 25b — Liquidity/leverage checks
+- [x] 25c — Kill switch
+
+## Phase 26 — Performance ✅
+
+- [x] 26a — C++ RSI scaffolding
+- [x] 26b — Vectorized numpy backtest path
+- [x] 26c — Parallel optimization grid
+
+## Phase 27 — Options ✅
+
+- [x] 27a — Options instrument model
+- [x] 27b — Greeks calculator
+- [x] 27c — Multi-leg strategies
+
+## Phase 28 — Crypto ✅
+
+- [x] 28a — Crypto 24/7 calendar
+- [x] 28b — Binance/Coinbase adapters
+
+## Phase 29 — Live Deployment ✅
+
+- [x] 29a — Approval workflow
+- [x] 29b — Live broker deployments
+- [x] 29c — Deployment monitoring
+
+## Phase 30 — Marketplace ✅
+
+- [x] 30a — Search/ratings
+- [x] 30b — Subscriptions
+- [x] 30c — Leaderboards
+
+## Phase 31 — Quant Research ✅
+
+- [x] 31a — Walk-forward viz
+- [x] 31b — Monte Carlo
+- [x] 31c — Regime detection
+
+## Phase 32 — Collaboration ✅
+
+- [x] 32a — Cursor presence
+- [x] 32b — Version diff/comments
+- [x] 32c — Team workspaces
+
+## Phase 33 — Observability ✅
+
+- [x] 33a — OpenTelemetry tracing
+- [x] 33b — Prometheus alert rules
+- [x] 33c — Business metrics Grafana dashboard
