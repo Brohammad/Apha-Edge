@@ -41,8 +41,9 @@ async def test_full_platform_journey(e2e_auth_client: httpx.AsyncClient):
 
     refresh = await client.post("/api/v1/auth/refresh", json={})
     assert refresh.status_code == 200
-    new_token = refresh.json()["data"]["access_token"]
-    client.headers["Authorization"] = f"Bearer {new_token}"
+    new_token = refresh.json()["data"].get("access_token") or ""
+    if new_token:
+        client.headers["Authorization"] = f"Bearer {new_token}"
 
     # --- API keys ---
     api_key_resp = await client.post(

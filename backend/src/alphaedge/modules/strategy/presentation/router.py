@@ -28,6 +28,7 @@ from alphaedge.modules.strategy.application.handlers import (
     UpdateStrategyHandler,
     ValidateStrategyVersionHandler,
 )
+from alphaedge.modules.strategy.domain.enums import StrategyType
 from alphaedge.modules.strategy.domain.templates import get_template, list_templates
 from alphaedge.modules.strategy.infrastructure.models import (
     SQLAlchemyIndicatorRepository,

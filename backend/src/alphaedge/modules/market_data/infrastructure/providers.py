@@ -4,11 +4,21 @@ from decimal import Decimal
 import httpx
 
 from alphaedge.config import settings
-from alphaedge.modules.market_data.infrastructure.indian_provider import IndianMarketDataProvider
 from alphaedge.modules.market_data.domain.enums import Timeframe
 from alphaedge.modules.market_data.domain.providers import MarketDataProvider
 from alphaedge.modules.market_data.domain.services import RawBar
 from alphaedge.shared.domain.exceptions import ValidationError
+
+
+def step_for_timeframe(timeframe: Timeframe) -> timedelta:
+    mapping = {
+        Timeframe.M1: timedelta(minutes=1),
+        Timeframe.M5: timedelta(minutes=5),
+        Timeframe.M15: timedelta(minutes=15),
+        Timeframe.H1: timedelta(hours=1),
+        Timeframe.D1: timedelta(days=1),
+    }
+    return mapping[timeframe]
 
 
 class MockMarketDataProvider(MarketDataProvider):
@@ -24,7 +34,7 @@ class MockMarketDataProvider(MarketDataProvider):
         end: datetime,
     ) -> list[RawBar]:
         bars: list[RawBar] = []
-        step = self._step_for_timeframe(timeframe)
+        step = step_for_timeframe(timeframe)
         price = Decimal("150.00")
         current = start
         while current < end:
@@ -51,14 +61,7 @@ class MockMarketDataProvider(MarketDataProvider):
 
     @staticmethod
     def _step_for_timeframe(timeframe: Timeframe) -> timedelta:
-        mapping = {
-            Timeframe.M1: timedelta(minutes=1),
-            Timeframe.M5: timedelta(minutes=5),
-            Timeframe.M15: timedelta(minutes=15),
-            Timeframe.H1: timedelta(hours=1),
-            Timeframe.D1: timedelta(days=1),
-        }
-        return mapping[timeframe]
+        return step_for_timeframe(timeframe)
 
 
 class AlphaVantageProvider(MarketDataProvider):
@@ -205,6 +208,10 @@ class PolygonProvider(MarketDataProvider):
 
 
 def get_provider(name: str) -> MarketDataProvider:
+    from alphaedge.modules.market_data.infrastructure.indian_provider import (
+        IndianMarketDataProvider,
+    )
+
     providers: dict[str, MarketDataProvider] = {
         "mock": MockMarketDataProvider(),
         "alpha_vantage": AlphaVantageProvider(),

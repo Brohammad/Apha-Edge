@@ -14,6 +14,7 @@ from starlette.responses import Response
 
 from alphaedge.config import settings
 from alphaedge.modules.analytics.presentation.router import analytics_router
+from alphaedge.modules.backtesting.presentation.router import backtest_router
 from alphaedge.modules.collaboration.presentation.router import collaboration_router
 from alphaedge.modules.execution.presentation.router import (
     broker_connections_router,
@@ -28,6 +29,7 @@ from alphaedge.modules.market_data.presentation.router import (
 )
 from alphaedge.modules.market_data.presentation.ws import ws_router
 from alphaedge.modules.marketplace.presentation.router import marketplace_router
+from alphaedge.modules.optimization.presentation.router import optimization_router
 from alphaedge.modules.optimization.presentation.walkforward_router import walkforward_router
 from alphaedge.modules.organization.presentation.router import organizations_router
 from alphaedge.modules.payments.presentation.router import payments_router

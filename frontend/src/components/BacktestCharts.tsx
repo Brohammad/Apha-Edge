@@ -2,8 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { DrawdownChart, ReturnsHistogram } from '../components/institutionalCharts'
 import { EquitySparkline, type SeriesPoint } from '../components/charts'
-import { PageHeader, Skeleton } from '../components/ui'
-import type { BacktestRun, EquityPoint, Paginated } from '../lib/types'
+import { Skeleton } from '../components/ui'
+import type { EquityPoint, Paginated } from '../lib/types'
 
 export default function BacktestAnalyticsPage({ runId }: { runId: string }) {
   const { data: curve, isLoading } = useQuery({

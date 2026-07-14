@@ -27,7 +27,7 @@ export default function IndianMarketsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Indian Markets"
-        subtitle="NSE/BSE instruments with INR formatting"
+        sub="NSE/BSE instruments with INR formatting"
       />
 
       <div className="flex flex-wrap items-center gap-3">

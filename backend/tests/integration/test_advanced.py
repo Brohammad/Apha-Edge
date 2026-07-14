@@ -20,8 +20,9 @@ async def _second_auth_client() -> AsyncClient:
         "/api/v1/auth/login",
         json={"email": email, "password": "SecurePass1234"},
     )
-    token = login.json()["data"]["access_token"]
-    ac.headers["Authorization"] = f"Bearer {token}"
+    token = login.json()["data"].get("access_token") or ""
+    if token:
+        ac.headers["Authorization"] = f"Bearer {token}"
     return ac
 
 

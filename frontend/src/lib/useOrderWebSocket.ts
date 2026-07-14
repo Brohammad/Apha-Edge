@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { fetchWsTicket } from './api'
-import type { Order } from './types'
+import type { Order, OrderStatus } from './types'
 
 const WS_BASE =
   typeof window !== 'undefined'
@@ -44,7 +44,7 @@ export function useOrderWebSocket(enabled = true) {
                     o.id === msg.order_id
                       ? {
                           ...o,
-                          status: msg.status ?? o.status,
+                          status: (msg.status as OrderStatus | undefined) ?? o.status,
                           filled_quantity: msg.filled_quantity ?? o.filled_quantity,
                         }
                       : o,

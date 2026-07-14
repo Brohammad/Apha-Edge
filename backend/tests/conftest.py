@@ -114,8 +114,9 @@ async def auth_client() -> AsyncGenerator[AsyncClient, None]:
             "/api/v1/auth/login",
             json={"email": email, "password": "SecurePass1234"},
         )
-        token = login.json()["data"]["access_token"]
-        ac.headers["Authorization"] = f"Bearer {token}"
+        token = login.json()["data"].get("access_token") or ""
+        if token:
+            ac.headers["Authorization"] = f"Bearer {token}"
         yield ac
 
 

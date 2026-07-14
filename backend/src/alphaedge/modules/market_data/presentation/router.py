@@ -26,6 +26,7 @@ from alphaedge.modules.market_data.application.handlers import (
     SearchInstrumentsHandler,
     TriggerIngestionHandler,
 )
+from alphaedge.modules.market_data.domain.enums import Timeframe
 from alphaedge.modules.market_data.domain.option_chain import build_option_chain
 from alphaedge.modules.market_data.infrastructure.models import (
     SQLAlchemyBarRepository,

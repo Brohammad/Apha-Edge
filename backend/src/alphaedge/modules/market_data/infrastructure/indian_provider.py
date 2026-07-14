@@ -6,7 +6,7 @@ from decimal import Decimal
 from alphaedge.modules.market_data.domain.enums import Timeframe
 from alphaedge.modules.market_data.domain.providers import MarketDataProvider
 from alphaedge.modules.market_data.domain.services import RawBar
-from alphaedge.modules.market_data.infrastructure.providers import MockMarketDataProvider
+from alphaedge.modules.market_data.infrastructure.providers import step_for_timeframe
 
 # Base INR prices for seeded Indian symbols.
 _INR_BASE_PRICES: dict[str, Decimal] = {
@@ -33,7 +33,7 @@ class IndianMarketDataProvider(MarketDataProvider):
         end,
     ) -> list[RawBar]:
         base = _INR_BASE_PRICES.get(symbol.upper(), Decimal("1000"))
-        step = MockMarketDataProvider._step_for_timeframe(timeframe)
+        step = step_for_timeframe(timeframe)
         bars: list[RawBar] = []
         price = base
         current = start

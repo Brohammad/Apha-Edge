@@ -14,6 +14,7 @@ from alphaedge.modules.execution.domain.broker import (
     OrderAck,
 )
 from alphaedge.modules.execution.domain.entities import Order
+from alphaedge.modules.execution.domain.enums import OrderType
 from alphaedge.modules.execution.domain.paper_broker import PaperBroker
 
 

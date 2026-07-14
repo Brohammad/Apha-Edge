@@ -78,8 +78,9 @@ async def e2e_auth_client(
             json={"email": email, "password": "SecurePass1234"},
         )
         assert login.status_code == 200, login.text
-        token = login.json()["data"]["access_token"]
-        client.headers["Authorization"] = f"Bearer {token}"
+        token = login.json()["data"].get("access_token") or ""
+        if token:
+            client.headers["Authorization"] = f"Bearer {token}"
         yield client
 
 

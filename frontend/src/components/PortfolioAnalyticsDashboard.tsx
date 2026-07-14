@@ -4,7 +4,7 @@ import { api } from '../lib/api'
 import { PageHeader, Skeleton } from './ui'
 import { DrawdownChart } from './institutionalCharts'
 import { EquitySparkline, type SeriesPoint } from './charts'
-import type { Paginated, Portfolio } from '../lib/types'
+import type { Portfolio } from '../lib/types'
 
 export default function PortfolioAnalyticsDashboard({ portfolioId: propId }: { portfolioId?: string }) {
   const { portfolioId: routeId } = useParams<{ portfolioId: string }>()
@@ -35,7 +35,7 @@ export default function PortfolioAnalyticsDashboard({ portfolioId: propId }: { p
 
   const mockCurve: SeriesPoint[] = Array.from({ length: 30 }, (_, i) => ({
     ts: new Date(Date.now() - (29 - i) * 86400000).toISOString(),
-    value: Number(portfolio?.total_equity ?? 100000) * (1 + i * 0.002),
+    value: Number(portfolio?.initial_capital ?? 100000) * (1 + i * 0.002),
   }))
 
   return (
