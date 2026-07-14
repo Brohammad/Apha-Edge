@@ -8,9 +8,15 @@ interface CollabPanelProps {
   strategyId: string
   code: string
   onRemoteEdit: (source: string) => void
+  joinSessionId?: string | null
 }
 
-export default function CollabPanel({ strategyId, code, onRemoteEdit }: CollabPanelProps) {
+export default function CollabPanel({
+  strategyId,
+  code,
+  onRemoteEdit,
+  joinSessionId,
+}: CollabPanelProps) {
   const [session, setSession] = useState<CollabSessionInfo | null>(null)
   const [connected, setConnected] = useState(false)
   const [peerCount, setPeerCount] = useState(0)
@@ -63,6 +69,12 @@ export default function CollabPanel({ strategyId, code, onRemoteEdit }: CollabPa
     },
     [onRemoteEdit],
   )
+
+  useEffect(() => {
+    if (joinSessionId && !session) {
+      setSession({ session_id: joinSessionId, strategy_id: strategyId })
+    }
+  }, [joinSessionId, session, strategyId])
 
   useEffect(() => {
     if (session?.session_id) {
