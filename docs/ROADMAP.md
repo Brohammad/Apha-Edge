@@ -585,3 +585,16 @@ flowchart TD
 - [x] 19c — `insider_intelligence` insight type
 
 **Exit criteria:** Form 4 parsing works; insider signals feed insight pipeline.
+
+---
+
+## Phase 20 — AI Assistant ✅
+
+**Status:** Complete
+
+### Deliverables
+- [x] 20a — `POST /insights/ask` conversational API
+- [x] 20b — Strategy loss analysis workflow
+- [x] 20c — `AssistantPage` chat UI
+
+**Exit criteria:** Users can chat with research assistant and request loss analysis.

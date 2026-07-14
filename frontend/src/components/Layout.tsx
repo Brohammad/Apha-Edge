@@ -8,6 +8,7 @@ import {
   Globe,
   LayoutDashboard,
   LogOut,
+  MessageCircle,
   Rocket,
   ScrollText,
   ShoppingBag,
@@ -34,6 +35,7 @@ const NAV = [
   { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
   { to: '/organizations', label: 'Organizations', icon: Users },
   { to: '/insights', label: 'AI Insights', icon: BrainCircuit },
+  { to: '/assistant', label: 'Assistant', icon: MessageCircle },
 ]
 
 interface TapeEntry {
