@@ -395,7 +395,7 @@ flowchart TD
 - [x] Order submission from signal (BUY/SELL → `SubmitOrder`)
 - [x] API: deploy/pause/list deployments
 - [x] Frontend: "Deploy to paper" flow from validated strategy version
-- [ ] Integration test: mock bar → signal → paper order (unit coverage; full integration optional)
+- [x] Integration test: mock bar → signal → paper order
 
 **Exit criteria:** A deployed DSL strategy on paper broker auto-places orders when bars arrive.
 
@@ -405,7 +405,7 @@ flowchart TD
 
 **Deliverables:**
 - [x] Parameters panel on `StrategyDetailPage` (key/value editor synced with version JSONB)
-- [ ] Inline validation errors in editor (parse API errors with line hints)
+- [x] Inline validation errors in editor (parse API errors with line hints)
 - [x] "Validate & Backtest" one-click flow when version is dirty
 - [x] Indicator catalog sidebar (from `GET /indicators`) with insert snippets
 - [x] Python strategy: starter template with `StrategyBase` skeleton
@@ -513,3 +513,28 @@ flowchart TD
 - [x] `docs/PERFORMANCE.md` with baseline notes and known N+1 risks
 
 **Exit criteria:** All CI checks pass; risk gate unit tests pass; version is 1.0.0; documentation is complete.
+
+---
+
+## Phase 15 — v1.1 Polish ✅
+
+**Status:** Complete (v1.1.0)
+
+**Goal:** Close outstanding Phase 13 items and deliver v1.1 promises from RELEASE_NOTES.
+
+### Deliverables
+- [x] 15a — Alpaca symbol fix, order metrics, DB latency observation
+- [x] 15b — Deployment signal flow integration test
+- [x] 15c — Risk snapshot Redis cache + Celery beat schedule
+- [x] 15d — Batch holdings/instrument queries (PERFORMANCE.md quick wins)
+- [x] 15e — WebSocket order status updates
+- [x] 15f — Market data WebSocket Redis pub/sub
+- [x] 15g — OAuth HTTP-only cookies
+- [x] 15h — Grafana auto-provisioning
+- [x] 15i — Inline DSL validation errors
+- [x] 15j — Deployments management UI
+- [x] 15k — HOLD signal logging on deployments
+- [x] 15l — Collab auto-join from share URL
+- [x] 15m — v1.1.0 release
+
+**Exit criteria:** Tag v1.1.0; all Phase 13 open items resolved.

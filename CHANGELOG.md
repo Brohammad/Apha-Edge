@@ -7,6 +7,24 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
+---
+
+## [1.1.0] — 2026-07-14
+
+### Added
+- WebSocket order status updates (`/api/v1/ws/orders`) with Redis pub/sub
+- Market data WebSocket fan-out via Redis instead of DB polling
+- Deployments management page with pause/resume
+- Risk snapshot Redis cache and daily Celery beat schedule
+- Grafana Prometheus datasource auto-provisioning
+- OAuth tokens in HTTP-only cookies
+- Deployment bar-to-signal-to-order integration test
+- Validation error line numbers in strategy editor
+
+### Fixed
+- Alpaca orders now send instrument symbol instead of UUID prefix
+- `orders_submitted_total` and DB query latency metrics wired
+
 ## [1.0.0] — 2026-07-11
 
 ### Summary

@@ -72,7 +72,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="AlphaEdge API",
-        version="1.0.0",
+        version="1.1.0",
         description="Quantitative trading research and execution platform",
         docs_url=docs_url,
         openapi_url=openapi_url,

@@ -233,7 +233,7 @@ Bar ingested (market data job)
 | `HOLD` action | Parsed but never acts in engine |
 | C++ engine | No comparisons, shorts, or signal metadata |
 | Live (non-paper) auto-trading | Deployments require paper broker |
-| Risk limits on auto-orders | Manual orders use risk module; deployment path does not yet enforce limits |
+| Risk limits on auto-orders | Deployment orders pass through `SubmitOrderHandler` and `RiskGate` |
 | Tick strategies | `on_tick` not wired to streaming |
 
 See [README.md](../README.md#known-limitations) for platform-wide limitations.
