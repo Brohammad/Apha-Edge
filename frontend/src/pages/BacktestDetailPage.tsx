@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { fmtDateTime, fmtMoney, fmtNum, fmtPct, signClass } from '../lib/format'
 import { EquitySparkline, type SeriesPoint } from '../components/charts'
+import { BacktestChartsSection } from '../components/BacktestCharts'
 import {
   ErrorNote,
   PageHeader,
@@ -194,6 +195,12 @@ export default function BacktestDetailPage() {
             </p>
             <EquitySparkline data={points} height={320} />
           </div>
+
+          {runId && (
+            <div className="mt-6">
+              <BacktestChartsSection runId={runId} />
+            </div>
+          )}
 
           <div className="terminal-card mt-6 overflow-x-auto">
             <div className="border-b border-ink-700 px-4 py-3">
