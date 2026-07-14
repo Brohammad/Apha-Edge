@@ -31,6 +31,19 @@ class ZerodhaCredentials(BaseModel):
     request_token: str = ""
 
 
+class AngelOneCredentials(BaseModel):
+    api_key: str = Field(min_length=1)
+    client_code: str = Field(min_length=1)
+    password: str = ""
+    totp_secret: str = ""
+
+
+class UpstoxCredentials(BaseModel):
+    api_key: str = Field(min_length=1)
+    api_secret: str = Field(min_length=1)
+    access_token: str = ""
+
+
 def validate_broker_credentials(
     broker_name: BrokerName, credentials: dict[str, Any]
 ) -> dict[str, Any]:
@@ -42,4 +55,8 @@ def validate_broker_credentials(
         return IbkrCredentials.model_validate(credentials).model_dump()
     if broker_name == BrokerName.ZERODHA:
         return ZerodhaCredentials.model_validate(credentials).model_dump()
+    if broker_name == BrokerName.ANGELONE:
+        return AngelOneCredentials.model_validate(credentials).model_dump()
+    if broker_name == BrokerName.UPSTOX:
+        return UpstoxCredentials.model_validate(credentials).model_dump()
     raise ValidationError(f"Unsupported broker: {broker_name.value}")

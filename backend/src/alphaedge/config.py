@@ -74,6 +74,9 @@ class Settings(BaseSettings):
     # Indian brokers
     zerodha_api_key: str = ""
     zerodha_api_secret: str = ""
+    angelone_api_key: str = ""
+    upstox_api_key: str = ""
+    upstox_api_secret: str = ""
 
     # Rate limiting (Redis sliding window)
     rate_limit_enabled: bool = True
