@@ -2,11 +2,17 @@ export function fmtMoney(value: string | number | null | undefined, currency = '
   if (value === null || value === undefined || value === '') return '—'
   const n = Number(value)
   if (!Number.isFinite(n)) return '—'
-  return n.toLocaleString('en-US', {
+  const locale = currency === 'INR' ? 'en-IN' : 'en-US'
+  return n.toLocaleString(locale, {
     style: 'currency',
     currency,
-    maximumFractionDigits: Math.abs(n) >= 1000 ? 0 : 2,
+    maximumFractionDigits: currency === 'INR' ? 2 : Math.abs(n) >= 1000 ? 0 : 2,
   })
+}
+
+/** Format INR amounts with Indian grouping (lakhs/crores style). */
+export function fmtInr(value: string | number | null | undefined): string {
+  return fmtMoney(value, 'INR')
 }
 
 export function fmtNum(value: string | number | null | undefined, digits = 2): string {

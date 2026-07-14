@@ -18,6 +18,7 @@ import InsightsPage from './pages/InsightsPage'
 import InsightDetailPage from './pages/InsightDetailPage'
 import MarketplacePage from './pages/MarketplacePage'
 import OrganizationsPage from './pages/OrganizationsPage'
+import IndianMarketsPage from './pages/IndianMarketsPage'
 import OAuthCallbackPage from './pages/OAuthCallbackPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 
@@ -62,6 +63,7 @@ export default function App() {
         <Route path="/insights" element={<InsightsPage />} />
         <Route path="/insights/:insightId" element={<InsightDetailPage />} />
         <Route path="/marketplace" element={<MarketplacePage />} />
+        <Route path="/indian-markets" element={<IndianMarketsPage />} />
         <Route path="/organizations" element={<OrganizationsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

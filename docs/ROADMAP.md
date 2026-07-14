@@ -538,3 +538,24 @@ flowchart TD
 - [x] 15m — v1.1.0 release
 
 **Exit criteria:** Tag v1.1.0; all Phase 13 open items resolved.
+
+---
+
+## Phase 17 — Indian Market Support ✅
+
+**Status:** Complete
+
+**Goal:** NSE/BSE instruments, Indian trading calendar, broker adapters, MIS margin, and INR UI.
+
+### Deliverables
+- [x] 17a — `TradingCalendar`, NSE/BSE seed instruments, `docs/INDIAN_MARKETS.md`
+- [x] 17b — `ProductType` (CNC/MIS/NRML), `ExchangeSegment` enums, extended `Order`
+- [x] 17c — Zerodha Kite Connect broker adapter (OAuth skeleton)
+- [x] 17d — Angel One SmartAPI broker adapter
+- [x] 17e — Upstox broker adapter
+- [x] 17f — Indian historical bar provider (`indian`)
+- [x] 17g — MIS margin estimation in risk gate
+- [x] 17h — Option chain snapshot API
+- [x] 17i — Frontend INR formatting + exchange filter (`/indian-markets`)
+
+**Exit criteria:** Indian symbols seedable; orders accept product type; broker stubs registered; INR UI available.
