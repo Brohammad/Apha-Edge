@@ -6,13 +6,13 @@
 |--------|----------|
 | Base URL | `https://api.alphaedge.io/api/v1` |
 | Format | JSON (`Content-Type: application/json`) |
-| Auth | Bearer JWT or `X-API-Key` header |
+| Auth | Bearer JWT, HTTP-only cookies (web SPA), or `X-API-Key` header |
 | Versioning | URL path prefix (`/api/v1/`) |
-| Pagination | Cursor-based: `?cursor=<token>&limit=50` |
-| Sorting | `?sort=-created_at` (prefix `-` for descending) |
-| Filtering | `?status=completed&strategy_id=<uuid>` |
-| Idempotency | `Idempotency-Key` header on POST |
-| Errors | RFC 7807 Problem Details envelope |
+| Pagination | Offset-based: `?offset=0&limit=50` (max 200) |
+| Sorting | Module-specific; not all list endpoints support `sort` |
+| Filtering | Module-specific query params (e.g. `?status=completed`) |
+| Idempotency | `idempotency_key` in JSON body on order POST |
+| Errors | `{ "error": { "code", "message", "details", "request_id" } }` — not RFC 7807 |
 | Documentation | Auto-generated OpenAPI 3.1 at `/api/v1/docs` |
 
 ### Response Envelope
@@ -31,11 +31,12 @@
 
 ```json
 {
-  "data": [ ... ],
-  "meta": {
-    "cursor": "eyJpZCI6IjU1MGU4...",
-    "has_more": true,
+  "data": {
+    "items": [ ... ],
     "total_count": 142
+  },
+  "meta": {
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
   }
 }
 ```
@@ -184,19 +185,27 @@ Requires validated `strategy_version_id`, paper `broker_connection_id`, and `por
 
 ## 4. WebSocket Protocol
 
-**Connection:** `wss://api.alphaedge.io/ws/v1/market-data`
+**Endpoints (local):**
+
+| Path | Purpose |
+|------|---------|
+| `ws://localhost:8000/api/v1/ws/market-data` | Bar updates by `instrument_id` (UUID) |
+| `ws://localhost:8000/api/v1/ws/orders` | Order status fan-out |
+
+**Authentication:** In production, obtain a ticket via `POST /api/v1/auth/ws-ticket` and connect with `Sec-WebSocket-Protocol: ticket.<token>`. In development, `?token=<jwt>` is accepted.
+
+**Market data subscribe** (send after connect):
 
 ```json
-// Subscribe
-{ "action": "subscribe", "channels": ["bars:AAPL:1m", "bars:MSFT:1d"] }
+{ "action": "subscribe", "instrument_ids": ["<uuid>"] }
+```
 
-// Unsubscribe
-{ "action": "unsubscribe", "channels": ["bars:AAPL:1m"] }
+**Incoming bar** (shape varies by instrument):
 
-// Incoming bar
+```json
 {
-  "channel": "bars:AAPL:1m",
-  "data": {
+  "instrument_id": "<uuid>",
+  "bar": {
     "timestamp": "2026-07-02T15:30:00Z",
     "open": 190.50, "high": 191.00, "low": 190.30, "close": 190.85,
     "volume": 125000
@@ -228,5 +237,5 @@ X-RateLimit-Reset: 1719928800
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health/live` | Liveness probe |
-| GET | `/health/ready` | Readiness (DB, Redis, workers) |
+| GET | `/health/ready` | Readiness (PostgreSQL + Redis) |
 | GET | `/metrics` | Prometheus metrics (internal) |

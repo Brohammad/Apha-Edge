@@ -55,7 +55,7 @@ test-e2e:
 
 # ── Quality gates ────────────────────────────────────────────────────────────
 
-# Fast local check: lint + unit tests only (no DB required)
+# Fast local check: lint + unit tests (no DB required)
 check: lint test-unit
 
 lint:

@@ -317,7 +317,21 @@ class StrategyCompiler:
             raise ValidationError(f"Python syntax error: {exc}") from exc
 
         blocked_import_roots = frozenset(
-            {"os", "sys", "subprocess", "socket", "pathlib", "shutil", "importlib", "builtins"}
+            {
+                "os",
+                "sys",
+                "subprocess",
+                "socket",
+                "pathlib",
+                "shutil",
+                "importlib",
+                "builtins",
+                "ctypes",
+                "urllib",
+                "pickle",
+                "threading",
+                "multiprocessing",
+            }
         )
         blocked_calls = frozenset(
             {

@@ -140,6 +140,25 @@ async def create_strategy(
     return success_response(_to_strategy(result), request_id=_request_id(request))
 
 
+@strategies_router.get("/templates")
+async def strategy_templates(request: Request, _user_id: UUID = Depends(get_current_user_id)):
+    return success_response({"items": list_templates()}, request_id=_request_id(request))
+
+
+@strategies_router.get("/templates/{template_id}")
+async def strategy_template(
+    template_id: str,
+    request: Request,
+    _user_id: UUID = Depends(get_current_user_id),
+):
+    tpl = get_template(template_id)
+    if not tpl:
+        from alphaedge.shared.domain.exceptions import NotFoundError
+
+        raise NotFoundError("Template", template_id)
+    return success_response({"id": template_id, **tpl}, request_id=_request_id(request))
+
+
 @strategies_router.get("/{strategy_id}")
 async def get_strategy(
     strategy_id: UUID,
@@ -281,21 +300,3 @@ async def list_indicators(
         {"items": [_to_indicator(i) for i in items], "total_count": len(items)},
         request_id=_request_id(request),
     )
-
-
-@strategies_router.get("/templates")
-async def strategy_templates(request: Request, _user_id: UUID = Depends(get_current_user_id)):
-    return success_response({"items": list_templates()}, request_id=_request_id(request))
-
-
-@strategies_router.get("/templates/{template_id}")
-async def strategy_template(
-    template_id: str,
-    request: Request,
-    _user_id: UUID = Depends(get_current_user_id),
-):
-    tpl = get_template(template_id)
-    if not tpl:
-        from alphaedge.shared.domain.exceptions import NotFoundError
-        raise NotFoundError("Template", template_id)
-    return success_response({"id": template_id, **tpl}, request_id=_request_id(request))

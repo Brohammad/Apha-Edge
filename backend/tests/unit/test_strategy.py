@@ -104,6 +104,21 @@ class TestStrategyCompiler:
         with pytest.raises(ValidationError, match="Disallowed import"):
             StrategyCompiler.validate_python("import os\nclass S(StrategyBase): pass")
 
+    def test_python_disallowed_eval_call(self):
+        with pytest.raises(ValidationError, match="Disallowed call"):
+            StrategyCompiler.validate_python("eval('1')\nclass S(StrategyBase): pass")
+
+    def test_python_disallowed_ctypes_import(self):
+        with pytest.raises(ValidationError, match="Disallowed import"):
+            StrategyCompiler.validate_python("import ctypes\nclass S(StrategyBase): pass")
+
+
+class TestPythonExecutorSandbox:
+    def test_safe_builtins_excludes_import(self):
+        from alphaedge.modules.backtesting.domain.python_executor import _safe_builtins
+
+        assert "__import__" not in _safe_builtins()
+
 
 class TestSMA:
     def test_not_ready_until_period(self):

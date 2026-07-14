@@ -566,6 +566,18 @@ After signing in you land on the **Overview** dashboard.
 
 ## Authentication (email, Google, GitHub)
 
+AlphaEdge supports three authentication modes:
+
+| Client | Mechanism |
+|--------|-----------|
+| **Web SPA** | HTTP-only cookies (`alphaedge_access`, `alphaedge_refresh`) set on login/OAuth; browser sends `credentials: 'include'` |
+| **API / scripts** | `Authorization: Bearer <access_token>` from login response (mobile clients receive token in body) |
+| **Automation** | `X-API-Key: ae_live_...` with scoped permissions |
+
+Cookie-based web sessions do not populate an in-memory JWT in the frontend; `/auth/me` and protected routes rely on cookies. Programmatic clients should use Bearer tokens or API keys.
+
+**Rate limiting:** Tier resolution uses Bearer or API key headers. Cookie-only browser sessions fall back to IP-based anonymous tier limits.
+
 ### Email / password
 Works out of the box. Passwords must meet strength requirements. In `development` mode, email is auto-verified on registration.
 
@@ -641,7 +653,7 @@ Providers: `mock`, `alpha_vantage`, `polygon` (requires respective API keys).
 
 - **Base URL (local):** `http://localhost:8000/api/v1`
 - **Interactive docs:** `http://localhost:8000/api/v1/docs`
-- **Auth:** `Authorization: Bearer <access_token>` or `X-API-Key: ae_live_...`
+- **Auth:** Bearer JWT, HTTP-only cookies (web), or `X-API-Key: ae_live_...`
 - **Response shape:** `{ "data": { ... }, "meta": { "request_id": "..." } }`
 
 ### Major endpoint groups (63 routes)
@@ -724,6 +736,31 @@ Copy `.env.example` to `.env` in the repo root. Key variables:
 
 ---
 
+## Capability matrix
+
+| Capability | Status |
+|------------|--------|
+| Paper Trading | Production Ready |
+| Alpaca Integration | Supported (manual orders when `LIVE_TRADING_ENABLED=true`) |
+| DSL Strategies | Production Ready |
+| Python Strategies | Supported (trusted execution only — see [Strategy guide](docs/STRATEGY_GUIDE.md)) |
+| Strategy Deployments (paper) | Production Ready |
+| Backtesting | Production Ready |
+| Optimization (grid, walk-forward, Bayesian) | Supported |
+| AI Insights (OpenAI) | Supported (`LLM_PROVIDER=mock` for offline) |
+| Marketplace (listings, clone) | Supported |
+| Organizations & Collaboration | Supported |
+| Live Trading (manual) | Experimental — requires checklist + `LIVE_TRADING_ENABLED` |
+| Live Auto-Trading | Not Implemented — deployments require paper broker |
+| IBKR / Zerodha / Angel One / Upstox | Stub adapters only (not enabled) |
+| Crypto (Binance / Coinbase) | Not Implemented |
+| Options | Not Implemented |
+| Indian Markets | Planned (mock data provider exists) |
+| Kill Switch | Not Implemented |
+| Multi-tenant Strategy Sandbox | Not Implemented |
+
+---
+
 ## Known limitations
 
 AlphaEdge is a full research terminal, but not every architecture diagram feature is wired end-to-end yet. Read [docs/STRATEGY_GUIDE.md](docs/STRATEGY_GUIDE.md) for the strategy authoring reference.
@@ -733,14 +770,14 @@ AlphaEdge is a full research terminal, but not every architecture diagram featur
 | **DSL backtests** | Crossover, comparisons, `all`/`any`, stop/take-profit metadata | C++ engine only supports crossover/crossunder |
 | **Python backtests** | `StrategyBase` sandbox, indicators via `context` | No C++ acceleration |
 | **Short selling** | `allow_short: true` in backtest config | Not applied to paper deployments |
-| **HOLD signals** | Validated in DSL | Ignored at runtime |
+| **HOLD signals** | Ignored in backtests | Recorded in paper deployments (logged, no order) |
 | **Paper deploy** | Bar ingestion → signal → paper order (with risk gate) | Paper broker only; no strategy-driven live execution |
-| **Risk gate** | Pre-trade checks on every order: cash, position size, portfolio exposure, daily loss | No real-time price feed — uses latest daily bar close as estimated fill price |
+| **Risk gate** | Pre-trade checks: cash/MIS margin, position size, portfolio exposure, daily loss | No real-time price feed — uses latest daily bar close as estimated fill price |
 | **Live trading** | Manual orders via Alpaca when enabled | No strategy-driven live execution; set `LIVE_TRADING_ENABLED=true` after completing `docs/PRODUCTION_CHECKLIST.md` |
 | **Market data** | Seed mock bars + optional Polygon/AV | Production-scale ingestion is bring-your-own keys |
 | **Domain events** | Celery tasks + direct calls | Full outbox/event-bus pattern not everywhere |
 
-Phase 14 (v1.0.0 release candidate) complete. See [docs/ROADMAP.md](docs/ROADMAP.md) and [RELEASE_NOTES.md](RELEASE_NOTES.md) for details.
+Phase 14 (v1.0.0) and Phase 15 polish (v1.1.0) complete. See [docs/ROADMAP.md](docs/ROADMAP.md), [RELEASE_NOTES.md](RELEASE_NOTES.md), and [docs/ENGINEERING_AUDIT_V1.md](docs/ENGINEERING_AUDIT_V1.md) for audit details and honest capability status.
 
 ---
 
@@ -774,7 +811,9 @@ Phase 14 (v1.0.0 release candidate) complete. See [docs/ROADMAP.md](docs/ROADMAP
 | `make test-integration` | Integration tests with Docker |
 | `make test-e2e` | Full HTTP end-to-end test |
 | `make build-cpp` | Build C++ backtest accelerator |
-| `make lint` | Ruff + mypy on backend |
+| `make lint` | Ruff format + lint on backend |
+| `make lint-types` | mypy on `src/` (local gradual typing — not CI-gated) |
+| `make check` | Ruff + unit tests (mirrors CI lint + unit) |
 
 ---
 
@@ -783,6 +822,7 @@ Phase 14 (v1.0.0 release candidate) complete. See [docs/ROADMAP.md](docs/ROADMAP
 | Document | Description |
 |----------|-------------|
 | [Strategy guide](docs/STRATEGY_GUIDE.md) | DSL, Python runtime, deployments, backtest config |
+| [Engineering audit (v1.0)](docs/ENGINEERING_AUDIT_V1.md) | Repository audit, security, performance, technical debt |
 | [Architecture](docs/architecture/ARCHITECTURE.md) | Bounded contexts, events, deployment |
 | [Repository Structure](docs/architecture/REPOSITORY_STRUCTURE.md) | Code organization conventions |
 | [Database Schema](docs/architecture/DATABASE_SCHEMA.md) | Tables and relationships |
@@ -804,7 +844,7 @@ Phase 14 (v1.0.0 release candidate) complete. See [docs/ROADMAP.md](docs/ROADMAP
 | Mobile | React Native (companion app in `/mobile`) |
 | Infra | Docker Compose, GitHub Actions, Nginx |
 | Payments | Stripe (mock gateway for local dev) |
-| Brokers | Paper simulator, Alpaca |
+| Brokers | Paper simulator, Alpaca (live when enabled); IBKR/Indian/crypto stubs not production-ready |
 
 ---
 

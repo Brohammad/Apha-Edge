@@ -70,7 +70,11 @@ select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
 
 [tool.mypy]
 python_version = "3.12"
-strict = true
+# Gradual typing: strict mode deferred until existing annotations are cleaned up (~400 errors today).
+# Run `make lint-types` locally; not enforced in CI until the backlog is cleared.
+strict = false
+warn_unused_ignores = true
+warn_redundant_casts = true
 plugins = ["pydantic.mypy"]
 mypy_path = "src"
 

@@ -51,7 +51,6 @@ def _safe_builtins() -> dict[str, object]:
         "True",
         "False",
         "None",
-        "__import__",
         "__build_class__",
         "__name__",
     }

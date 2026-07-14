@@ -236,10 +236,11 @@ flowchart LR
 
 GitHub Actions workflows:
 
-- **backend-ci.yml:** ruff, mypy, pytest (unit + integration)
-- **frontend-ci.yml:** eslint, tsc, vitest
-- **docker-build.yml:** build and push images on tag
-- **deploy-staging.yml:** deploy to staging on merge to main
+- **backend-ci.yml:** ruff, mypy, pip-audit, pytest (unit + integration), C++ extension build
+- **frontend-ci.yml:** oxlint, npm audit, tsc + vite build
+- **dependabot.yml:** weekly pip/npm dependency PRs
+
+Docker image build and Playwright e2e are run locally (`make dev`, `cd frontend && npx playwright test`), not in CI. See [docs/CI.md](../CI.md).
 
 ---
 

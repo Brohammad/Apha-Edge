@@ -109,6 +109,27 @@ def test_portfolio_updater_insufficient_cash():
         )
 
 
+
+@pytest.mark.asyncio
+async def test_paper_broker_partial_fill():
+    broker = PaperBroker(
+        slippage=Decimal("0"),
+        commission_per_trade=Decimal("1"),
+        partial_fill_ratio=Decimal("0.5"),
+    )
+    order = Order.create(
+        portfolio_id=uuid4(),
+        broker_connection_id=uuid4(),
+        instrument_id=uuid4(),
+        side=Side.BUY,
+        order_type=OrderType.MARKET,
+        quantity=Decimal("10"),
+    )
+    ack = await broker.submit_order(order, _INST, Decimal("100"))
+    assert ack.fill is not None
+    assert ack.fill.filled_quantity == Decimal("5")
+
+
 def test_order_cancel_and_fill():
     order = Order.create(
         portfolio_id=uuid4(),

@@ -16,6 +16,8 @@ Development proceeds in **phases**, each delivering a vertical slice of function
 
 **Approval is required before starting each phase.**
 
+> **v1.0 honesty note (2026-07-14):** Some later phases are marked complete for scaffolding or domain code, but not all features are API-wired or production-ready. See [ENGINEERING_AUDIT_V1.md](ENGINEERING_AUDIT_V1.md) and the [README capability matrix](../README.md#capability-matrix) for the authoritative status of live deployments, marketplace subscriptions, kill switch, and broker adapters.
+
 ---
 
 ## Phase 0 — Architecture & Planning ✅

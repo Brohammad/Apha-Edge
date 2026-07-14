@@ -386,7 +386,7 @@ To extract a microservice: move the package, add a message bus adapter replacing
 
 ## 9. Implementation Status
 
-**Status as of Phase 13 (2026):** The platform described in sections 1–8 is **implemented** as a modular monolith in this repository. Phases 0–12 and Phase 13a–13e are complete.
+**Status as of v1.1.0 (2026-07-14):** The platform described in sections 1–8 is **implemented** as a modular monolith. Phases 0–14 are production-ready; Phases 15–33 include polish and partial scaffolds (see honest notes below).
 
 ### 9.1 Bounded context maturity
 
@@ -398,9 +398,9 @@ To extract a microservice: move the package, add a message bus adapter replacing
 | Backtesting | ✅ Operational | Python + optional C++ DSL path; shorts optional |
 | Optimization | ✅ Operational | Grid, walk-forward, Bayesian (Optuna), genetic |
 | Portfolio & Risk | ✅ Operational | Holdings, VaR, Sharpe, limits, rebalance plans |
-| Execution | ✅ Operational | Paper broker, Alpaca adapter, order lifecycle |
-| AI Insights | ✅ Operational | OpenAI + mock provider |
-| Marketplace / Collab | ✅ Operational | Listings, Stripe, WebSocket co-editing |
+| Execution | ✅ Operational | Paper broker, Alpaca adapter; IBKR/Indian/crypto stubs raise errors |
+| AI Insights | ✅ Operational | OpenAI + mock provider (no Anthropic) |
+| Marketplace / Collab | ✅ Operational | Listings + clone; subscriptions/leaderboards not API-wired |
 
 ### 9.2 Strategy & execution data flow (implemented)
 
@@ -420,10 +420,11 @@ POST /strategies             POST /backtest-runs              POST /strategy-dep
 
 | Item | Current behavior |
 |------|------------------|
-| HOLD signals | Validated in DSL; engine ignores |
+| HOLD signals | Ignored in backtests; logged in paper deployments |
 | C++ backtest | Crossover/crossunder DSL only; no shorts or advanced DSL |
 | Deployment shorts | Backtest supports `allow_short`; deployments map BUY/SELL to long-only paper orders |
-| Outbox / event bus | Documented pattern; cross-module wiring is mostly direct calls + Celery |
+| Outbox / event bus | Dispatcher runs; `store_outbox_event` not called from business code yet |
+| OpenTelemetry | Optional (`OTEL_ENABLED=false` default); console exporter only |
 | Kelly / volume slippage | Not implemented (architecture aspirational) |
 
 ### 9.4 Further reading

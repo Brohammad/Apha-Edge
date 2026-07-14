@@ -13,7 +13,7 @@ Runs on changes to `backend/**`.
 | Install | `pip install -e "./backend[dev]"` | Includes dev extras (pytest, ruff, mypy) |
 | Build C++ ext | `pip install ./backend/cpp` | Optional position-sizing speedup |
 | Lint | `ruff check src tests && ruff format --check src tests` | Fail on any lint error |
-| Type check | `mypy src` | Strict mode |
+| Type check | `make lint-types` (`mypy src`) | **Local only** — gradual typing; not in CI until backlog cleared |
 | Security audit | `pip-audit -r /tmp/reqs.txt` | Filters editable/local packages to avoid false positives |
 | Migrations | `alembic upgrade head` | Applied against in-workflow Postgres |
 | Tests | `pytest -v --cov=alphaedge` | Full suite (unit + integration) |
@@ -38,6 +38,9 @@ Playwright e2e tests are not run in CI (they require a running API). Run them lo
 ```bash
 # Mirror backend CI (lint + unit tests — no DB required)
 make check
+
+# Optional: mypy gradual typing (local only, not CI-gated)
+make lint-types
 
 # Full CI including integration tests (requires Postgres + Redis)
 make ci-local

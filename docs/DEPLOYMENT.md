@@ -118,7 +118,7 @@ A sample Nginx config is in `infrastructure/nginx/nginx.conf`. Key settings:
 After deploying the observability profile:
 
 1. Open Grafana at `http://<host>:3001` (default login: `admin` / `alphaedge`).
-2. Add a Prometheus datasource pointing to `http://prometheus:9090`.
+2. Prometheus is auto-provisioned as the default datasource (`infrastructure/grafana/provisioning/datasources/prometheus.yml`).
 3. The `AlphaEdge API` dashboard is pre-loaded from `infrastructure/grafana/dashboards/alphaedge-api.json`.
 
 ---

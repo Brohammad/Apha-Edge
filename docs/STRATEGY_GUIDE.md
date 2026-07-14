@@ -140,12 +140,20 @@ class MyStrategy(StrategyBase):
         return None
 ```
 
-### 4.2 Sandbox rules
+### 4.2 Sandbox rules (trusted environments only)
+
+Python strategies are **not** run in an OS-level sandbox. They execute in the same process as the API/worker via `exec()` with:
+
+- **Static AST validation** — blocks dangerous imports (`os`, `sys`, `subprocess`, …) and calls (`eval`, `exec`, `open`, `__import__`, …)
+- **Restricted builtins** — whitelisted names only; `__import__` is excluded from the runtime namespace
+- **Injected API** — `StrategyBase`, indicators, `Signal`, `Decimal` only
+
+**Suitable for:** single-user research, trusted code authors, private deployments.
+
+**Not suitable for:** multi-tenant SaaS, marketplace strategies from untrusted authors, or production live trading without additional isolation (containers, separate worker pools, etc.).
 
 - Must define **exactly one** `StrategyBase` subclass.
-- Static validation blocks dangerous imports (`os`, `sys`, `subprocess`, etc.) and calls (`eval`, `exec`, `open`, …).
-- Runtime uses a restricted builtins namespace; `StrategyBase`, indicators, and `Signal` are pre-injected.
-- `on_tick` is optional; backtests are bar-driven today.
+- `on_tick` is optional; backtests and deployments are bar-driven today.
 
 ### 4.3 `StrategyContext`
 
@@ -230,7 +238,7 @@ Bar ingested (market data job)
 | Area | Status |
 |------|--------|
 | Short selling in deployments | Backtests only; deployments are long-only order mapping today |
-| `HOLD` action | Parsed but never acts in engine |
+| `HOLD` action | Ignored in backtest engine; logged in paper deployments (no order placed) |
 | C++ engine | No comparisons, shorts, or signal metadata |
 | Live (non-paper) auto-trading | Deployments require paper broker |
 | Risk limits on auto-orders | Deployment orders pass through `SubmitOrderHandler` and `RiskGate` |

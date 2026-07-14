@@ -23,7 +23,7 @@ ProposedOrder
 3. portfolio_exposure    — projected invested / equity ≤ MAX_PORTFOLIO_EXPOSURE_PCT limit
     │
     ▼
-4. cash_availability     — for BUY: order notional ≤ portfolio.cash_balance
+4. cash_availability     — for BUY: required cash or MIS margin (estimate_required_margin) ≤ balance
     │                      for SELL: held quantity ≥ order quantity
     ▼
 5. risk_limits           — active MAX_DRAWDOWN and MAX_VAR limits against latest snapshot
