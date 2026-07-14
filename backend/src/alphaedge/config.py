@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     llm_provider: Literal["mock", "openai"] = "openai"
 
+    # Tavily research
+    tavily_api_key: str = ""
+    research_provider: Literal["mock", "tavily"] = "mock"
+
     # OAuth (Google, GitHub)
     google_oauth_client_id: str = ""
     google_oauth_client_secret: str = ""
