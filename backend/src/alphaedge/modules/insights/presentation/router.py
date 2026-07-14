@@ -12,7 +12,7 @@ from alphaedge.modules.insights.application.commands import (
     RequestInsightCommand,
     StrategyExplainCommand,
 )
-from alphaedge.modules.insights.application.handlers import (
+from alphaedge.modules.insights.application.loss_analysis import StrategyLossAnalysisHandler
     GetInsightHandler,
     ListInsightsHandler,
     PerformanceReportHandler,
@@ -248,17 +248,12 @@ async def strategy_loss_analysis(
     user_id: UUID = Depends(get_current_user_id),
 ):
     request_repo, _ = _repos(session)
-    handler = PerformanceReportHandler(request_repo)
+    handler = StrategyLossAnalysisHandler(request_repo)
     result = await handler.handle(
         PerformanceReportCommand(
             user_id=user_id,
             backtest_run_id=UUID(body.backtest_run_id),
         )
     )
-    # Re-tag as loss analysis insight type
-    entity = await request_repo.get_by_id(result.id)
-    if entity:
-        entity.insight_type = InsightType.STRATEGY_LOSS_ANALYSIS
-        await request_repo.update(entity)
     result = await _enqueue(session, result)
     return success_response(_to_request(result), request_id=_request_id(request))
