@@ -64,6 +64,15 @@ class Settings(BaseSettings):
     # SEC EDGAR
     sec_user_agent: str = "AlphaEdge research@example.com"
 
+    # OpenTelemetry
+    otel_enabled: bool = False
+
+    # Crypto brokers
+    binance_api_key: str = ""
+    binance_api_secret: str = ""
+    coinbase_api_key: str = ""
+    coinbase_api_secret: str = ""
+
     # OAuth (Google, GitHub)
     google_oauth_client_id: str = ""
     google_oauth_client_secret: str = ""

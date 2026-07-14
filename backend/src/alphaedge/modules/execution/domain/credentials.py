@@ -59,4 +59,16 @@ def validate_broker_credentials(
         return AngelOneCredentials.model_validate(credentials).model_dump()
     if broker_name == BrokerName.UPSTOX:
         return UpstoxCredentials.model_validate(credentials).model_dump()
+    if broker_name == BrokerName.BINANCE:
+        from pydantic import BaseModel, Field
+        class BinanceCredentials(BaseModel):
+            api_key: str = Field(min_length=1)
+            api_secret: str = Field(min_length=1)
+        return BinanceCredentials.model_validate(credentials).model_dump()
+    if broker_name == BrokerName.COINBASE:
+        from pydantic import BaseModel, Field
+        class CoinbaseCredentials(BaseModel):
+            api_key: str = Field(min_length=1)
+            api_secret: str = Field(min_length=1)
+        return CoinbaseCredentials.model_validate(credentials).model_dump()
     raise ValidationError(f"Unsupported broker: {broker_name.value}")
