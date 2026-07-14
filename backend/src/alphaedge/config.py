@@ -78,6 +78,9 @@ class Settings(BaseSettings):
     upstox_api_key: str = ""
     upstox_api_secret: str = ""
 
+    # Indian market data provider: mock | indian
+    indian_market_data_provider: str = "mock"
+
     # Rate limiting (Redis sliding window)
     rate_limit_enabled: bool = True
 
