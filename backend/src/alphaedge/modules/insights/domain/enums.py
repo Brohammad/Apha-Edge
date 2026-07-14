@@ -8,6 +8,7 @@ class InsightType(StrEnum):
     TRADE_SUMMARY = "trade_summary"
     COMPANY_RESEARCH = "company_research"
     INSIDER_INTELLIGENCE = "insider_intelligence"
+    STRATEGY_LOSS_ANALYSIS = "strategy_loss_analysis"
 
 
 class SourceType(StrEnum):

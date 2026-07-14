@@ -34,6 +34,8 @@ async def build_context(
         return await _strategy_context(session, user_id, source_type, source_id)
     if insight_type == InsightType.PERFORMANCE_REPORT:
         return await _performance_context(session, user_id, source_id)
+    if insight_type == InsightType.STRATEGY_LOSS_ANALYSIS:
+        return await _performance_context(session, user_id, source_id)
     if insight_type == InsightType.RISK_INTERPRETATION:
         return await _risk_context(session, user_id, source_id)
     if insight_type == InsightType.TRADE_SUMMARY:

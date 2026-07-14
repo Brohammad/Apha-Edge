@@ -36,6 +36,18 @@ PROMPT_TEMPLATES: dict[InsightType, dict[str, str]] = {
             "metrics analysis, and recommendations."
         ),
     },
+    InsightType.STRATEGY_LOSS_ANALYSIS: {
+        "v1": (
+            "You are a quantitative strategist diagnosing underperformance.\n\n"
+            "Backtest: {backtest_name}\n"
+            "Period: {start_date} to {end_date}\n"
+            "Total return: {total_return}\n"
+            "Max drawdown: {max_drawdown}\n"
+            "Win rate: {win_rate}\n"
+            "Equity summary: {equity_summary}\n\n"
+            "Identify likely causes of losses, regime mismatches, and concrete improvements."
+        ),
+    },
     InsightType.RISK_INTERPRETATION: {
         "v1": (
             "You are a risk manager. Interpret this portfolio risk snapshot in plain language.\n\n"

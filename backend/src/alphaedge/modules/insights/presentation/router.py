@@ -26,6 +26,8 @@ from alphaedge.modules.insights.infrastructure.models import (
 from alphaedge.modules.insights.infrastructure.runner import execute_insight
 from alphaedge.modules.insights.infrastructure.tasks import generate_insight_task
 from alphaedge.modules.insights.presentation.schemas import (
+    AskInsightRequest,
+    AskInsightResponse,
     InsightDetailResponse,
     InsightReportResponse,
     InsightRequestResponse,
@@ -33,6 +35,8 @@ from alphaedge.modules.insights.presentation.schemas import (
     RequestInsightRequest,
     StrategyExplainRequest,
 )
+from alphaedge.modules.insights.domain.enums import InsightType
+from alphaedge.modules.insights.infrastructure.tavily_research import get_research_provider
 from alphaedge.shared.presentation.envelope import success_response
 
 insights_router = APIRouter(prefix="/insights", tags=["AI Insights"])
@@ -206,3 +210,55 @@ async def get_insight(
         else None,
     )
     return success_response(payload.model_dump(mode="json"), request_id=_request_id(request))
+
+
+@insights_router.post("/ask")
+async def ask_insight(
+    body: AskInsightRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_db_session),
+    user_id: UUID = Depends(get_current_user_id),
+):
+    research = get_research_provider()
+    result = await research.search(body.question)
+    _, llm = _get_llm_from_settings()
+    prompt = (
+        f"User question: {body.question}\n\n"
+        f"Research context:\n{result.summary}\n\n"
+        "Answer concisely with actionable trading research insights."
+    )
+    response = await llm.complete(prompt, insight_type="ask", context={"question": body.question})
+    payload = AskInsightResponse(
+        answer=response.content,
+        sources=result.sources,
+    )
+    return success_response(payload.model_dump(mode="json"), request_id=_request_id(request))
+
+
+def _get_llm_from_settings():
+    from alphaedge.modules.insights.infrastructure.runner import _get_llm_provider
+    return _get_llm_provider()
+
+
+@insights_router.post("/strategy-loss-analysis", status_code=status.HTTP_202_ACCEPTED)
+async def strategy_loss_analysis(
+    body: PerformanceReportRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_db_session),
+    user_id: UUID = Depends(get_current_user_id),
+):
+    request_repo, _ = _repos(session)
+    handler = PerformanceReportHandler(request_repo)
+    result = await handler.handle(
+        PerformanceReportCommand(
+            user_id=user_id,
+            backtest_run_id=UUID(body.backtest_run_id),
+        )
+    )
+    # Re-tag as loss analysis insight type
+    entity = await request_repo.get_by_id(result.id)
+    if entity:
+        entity.insight_type = InsightType.STRATEGY_LOSS_ANALYSIS
+        await request_repo.update(entity)
+    result = await _enqueue(session, result)
+    return success_response(_to_request(result), request_id=_request_id(request))

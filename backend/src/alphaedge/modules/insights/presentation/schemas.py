@@ -18,6 +18,17 @@ class PerformanceReportRequest(BaseModel):
     backtest_run_id: str
 
 
+class AskInsightRequest(BaseModel):
+    question: str
+    context_type: str | None = None
+    context_id: str | None = None
+
+
+class AskInsightResponse(BaseModel):
+    answer: str
+    sources: list[dict[str, str]] = []
+
+
 class InsightRequestResponse(BaseModel):
     id: str
     user_id: str
