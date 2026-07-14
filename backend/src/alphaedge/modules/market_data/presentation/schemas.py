@@ -67,3 +67,20 @@ class QuoteResponse(BaseModel):
     as_of: datetime
     source: str
     fallback_reason: str | None = None
+
+
+class OptionContractResponse(BaseModel):
+    symbol: str
+    strike: str
+    option_type: str
+    expiry: str
+    ltp: str
+    oi: int
+    iv: str | None = None
+
+
+class OptionChainResponse(BaseModel):
+    underlying: str
+    spot_price: str
+    as_of: datetime
+    contracts: list[OptionContractResponse]

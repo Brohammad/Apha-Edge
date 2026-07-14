@@ -26,7 +26,7 @@ from alphaedge.modules.market_data.application.handlers import (
     SearchInstrumentsHandler,
     TriggerIngestionHandler,
 )
-from alphaedge.modules.market_data.domain.enums import Timeframe
+from alphaedge.modules.market_data.domain.option_chain import build_option_chain
 from alphaedge.modules.market_data.infrastructure.models import (
     SQLAlchemyBarRepository,
     SQLAlchemyIngestionJobRepository,
@@ -38,6 +38,8 @@ from alphaedge.modules.market_data.presentation.schemas import (
     CreateInstrumentRequest,
     IngestionJobResponse,
     InstrumentResponse,
+    OptionChainResponse,
+    OptionContractResponse,
     QuoteResponse,
     TriggerIngestionRequest,
 )
@@ -242,6 +244,37 @@ async def get_quotes(
         },
         request_id=_request_id(request),
     )
+
+
+@market_data_router.get("/options/{symbol}/chain")
+async def get_option_chain(
+    symbol: str,
+    request: Request,
+    spot: float | None = Query(default=None, description="Override spot price"),
+    _user_id: UUID = Depends(get_current_user_id),
+):
+    from decimal import Decimal
+
+    spot_price = Decimal(str(spot)) if spot is not None else None
+    chain = build_option_chain(symbol, spot_price)
+    payload = OptionChainResponse(
+        underlying=chain.underlying,
+        spot_price=str(chain.spot_price),
+        as_of=chain.as_of,
+        contracts=[
+            OptionContractResponse(
+                symbol=c.symbol,
+                strike=str(c.strike),
+                option_type=c.option_type,
+                expiry=c.expiry.isoformat(),
+                ltp=str(c.ltp),
+                oi=c.oi,
+                iv=str(c.iv) if c.iv is not None else None,
+            )
+            for c in chain.contracts
+        ],
+    )
+    return success_response(payload.model_dump(mode="json"), request_id=_request_id(request))
 
 
 @market_data_router.post("/ingest", status_code=202)
