@@ -28,7 +28,7 @@ from alphaedge.modules.strategy.application.handlers import (
     UpdateStrategyHandler,
     ValidateStrategyVersionHandler,
 )
-from alphaedge.modules.strategy.domain.enums import StrategyType
+from alphaedge.modules.strategy.domain.templates import get_template, list_templates
 from alphaedge.modules.strategy.infrastructure.models import (
     SQLAlchemyIndicatorRepository,
     SQLAlchemyStrategyRepository,
@@ -280,3 +280,21 @@ async def list_indicators(
         {"items": [_to_indicator(i) for i in items], "total_count": len(items)},
         request_id=_request_id(request),
     )
+
+
+@strategies_router.get("/templates")
+async def strategy_templates(request: Request, _user_id: UUID = Depends(get_current_user_id)):
+    return success_response({"items": list_templates()}, request_id=_request_id(request))
+
+
+@strategies_router.get("/templates/{template_id}")
+async def strategy_template(
+    template_id: str,
+    request: Request,
+    _user_id: UUID = Depends(get_current_user_id),
+):
+    tpl = get_template(template_id)
+    if not tpl:
+        from alphaedge.shared.domain.exceptions import NotFoundError
+        raise NotFoundError("Template", template_id)
+    return success_response({"id": template_id, **tpl}, request_id=_request_id(request))
