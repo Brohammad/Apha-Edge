@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     tavily_api_key: str = ""
     research_provider: Literal["mock", "tavily"] = "mock"
 
+    # SEC EDGAR
+    sec_user_agent: str = "AlphaEdge research@example.com"
+
     # OAuth (Google, GitHub)
     google_oauth_client_id: str = ""
     google_oauth_client_secret: str = ""
