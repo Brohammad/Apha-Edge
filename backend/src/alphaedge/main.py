@@ -13,7 +13,7 @@ from sqlalchemy import text
 from starlette.responses import Response
 
 from alphaedge.config import settings
-from alphaedge.modules.backtesting.presentation.router import backtest_router
+from alphaedge.modules.analytics.presentation.router import analytics_router
 from alphaedge.modules.collaboration.presentation.router import collaboration_router
 from alphaedge.modules.execution.presentation.router import (
     broker_connections_router,
@@ -197,6 +197,7 @@ def register_routes(app: FastAPI) -> None:
     api_v1.include_router(strategies_router)
     api_v1.include_router(deployments_router)
     api_v1.include_router(indicators_router)
+    api_v1.include_router(analytics_router)
     api_v1.include_router(backtest_router)
     api_v1.include_router(optimization_router)
     api_v1.include_router(broker_connections_router)

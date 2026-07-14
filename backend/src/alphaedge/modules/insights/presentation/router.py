@@ -13,6 +13,7 @@ from alphaedge.modules.insights.application.commands import (
     StrategyExplainCommand,
 )
 from alphaedge.modules.insights.application.loss_analysis import StrategyLossAnalysisHandler
+from alphaedge.modules.insights.application.handlers import (
     GetInsightHandler,
     ListInsightsHandler,
     PerformanceReportHandler,
