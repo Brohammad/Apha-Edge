@@ -62,6 +62,17 @@ PROMPT_TEMPLATES: dict[InsightType, dict[str, str]] = {
             "and notable trades."
         ),
     },
+    InsightType.COMPANY_RESEARCH: {
+        "v1": (
+            "You are an equity research analyst. Synthesize company research.\n\n"
+            "Symbol: {symbol}\n"
+            "Company: {name}\n"
+            "Exchange: {exchange}\n\n"
+            "Web research summary:\n{research_summary}\n\n"
+            "Sources: {research_sources}\n\n"
+            "Provide investment-relevant highlights, risks, and recent developments."
+        ),
+    },
 }
 
 

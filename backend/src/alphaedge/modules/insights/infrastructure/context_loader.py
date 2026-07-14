@@ -18,6 +18,7 @@ from alphaedge.modules.strategy.infrastructure.models import (
     SQLAlchemyStrategyRepository,
     SQLAlchemyStrategyVersionRepository,
 )
+from alphaedge.modules.insights.infrastructure.tavily_research import get_research_provider
 from alphaedge.shared.domain.exceptions import AuthorizationError, NotFoundError, ValidationError
 
 
@@ -37,7 +38,18 @@ async def build_context(
         return await _risk_context(session, user_id, source_id)
     if insight_type == InsightType.TRADE_SUMMARY:
         return await _trade_context(session, user_id, source_type, source_id)
+    if insight_type == InsightType.COMPANY_RESEARCH:
+        return await _company_research_context(session, user_id, source_type, source_id)
     raise ValidationError(f"Unsupported insight type: {insight_type.value}")
+
+
+async def _enrich_with_research(context: dict[str, object], query: str) -> dict[str, object]:
+    provider = get_research_provider()
+    result = await provider.search(query)
+    enriched = dict(context)
+    enriched["research_summary"] = result.summary
+    enriched["research_sources"] = result.sources
+    return enriched
 
 
 async def _strategy_context(
@@ -70,12 +82,15 @@ async def _strategy_context(
     if not version:
         raise NotFoundError("StrategyVersion", str(source_id))
 
-    return {
-        "strategy_name": strategy.name,
-        "strategy_type": strategy.strategy_type.value,
-        "parameters": version.parameters,
-        "source_code": version.source_code,
-    }
+    return await _enrich_with_research(
+        {
+            "strategy_name": strategy.name,
+            "strategy_type": strategy.strategy_type.value,
+            "parameters": version.parameters,
+            "source_code": version.source_code,
+        },
+        query=f"{strategy.name} company fundamentals news",
+    )
 
 
 async def _performance_context(
@@ -186,3 +201,31 @@ async def _trade_context(
         }
 
     raise ValidationError("trade_summary requires backtest or order source")
+
+
+async def _company_research_context(
+    session: AsyncSession,
+    user_id: UUID,
+    source_type: SourceType,
+    source_id: UUID,
+) -> dict[str, object]:
+    from alphaedge.modules.market_data.infrastructure.models import SQLAlchemyInstrumentRepository
+
+    if source_type != SourceType.INSTRUMENT:
+        raise ValidationError("company_research requires instrument source")
+
+    repo = SQLAlchemyInstrumentRepository(session)
+    instrument = await repo.get_by_id(source_id)
+    if not instrument:
+        raise NotFoundError("Instrument", str(source_id))
+
+    base = {
+        "symbol": instrument.symbol,
+        "name": instrument.name,
+        "exchange": instrument.exchange,
+        "currency": instrument.currency,
+    }
+    return await _enrich_with_research(
+        base,
+        query=f"{instrument.name} ({instrument.symbol}) stock analysis recent news",
+    )
