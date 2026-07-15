@@ -7,7 +7,7 @@
 - **Timestamps** on every table: `created_at`, `updated_at` (UTC).
 - **Soft deletes** where business requires history (`deleted_at`).
 - **Audit trail** via append-only `audit_log` table.
-- **Outbox pattern** via `outbox_events` for reliable event dispatch.
+- **Outbox pattern:** Removed. Cross-module work uses Celery tasks and in-process calls. Audit log remains.
 - Time-series market data uses **table partitioning** by month.
 
 ---

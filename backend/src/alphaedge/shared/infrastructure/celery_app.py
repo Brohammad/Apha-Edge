@@ -31,11 +31,6 @@ celery_app.conf.update(
             "schedule": 86400.0,
             "options": {"expires": 3600},
         },
-        "outbox-dispatch": {
-            "task": "events.dispatch_outbox",
-            "schedule": 30.0,
-            "options": {"expires": 25},
-        },
     },
     include=[
         "alphaedge.modules.market_data.infrastructure.tasks",
@@ -47,7 +42,6 @@ celery_app.conf.update(
         "alphaedge.modules.risk.infrastructure.tasks",
         "alphaedge.modules.sec.infrastructure.tasks",
         "alphaedge.modules.analytics.infrastructure.tasks",
-        "alphaedge.modules.events.infrastructure.dispatcher",
         "alphaedge.modules.deployment.infrastructure.monitoring",
     ],
 )

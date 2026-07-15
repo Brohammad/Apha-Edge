@@ -73,13 +73,14 @@ This section is the **full story** of AlphaEdge: what it is, how the pieces talk
 
 ### What you are looking at
 
-AlphaEdge is a **quantitative trading research platform** shipped as a single repository with three runnable surfaces:
+AlphaEdge is a **quantitative trading research platform** shipped as a single repository with two primary runnable surfaces:
 
 | Surface | Path | Role |
 |---------|------|------|
 | **Web terminal** | `frontend/` | Where humans design strategies, launch backtests, manage portfolios, and place orders |
 | **API + workers** | `backend/` | Business logic, database, async jobs (backtests, ingestion, order execution) |
-| **Mobile companion** | `mobile/` | Read-only / lightweight companion (optional) |
+
+> **Mobile:** an experimental Expo sketch lives in `mobile/` but is **not** a supported product surface.
 
 The backend is a **modular monolith**: one deployable app, but code is split into **bounded contexts** (identity, strategy, backtesting, execution, …). Each context has `domain/` → `application/` → `infrastructure/` → `presentation/` layers.
 
@@ -453,7 +454,7 @@ alpha-edge/
 ├── frontend/                # React web terminal (Vite)
 │   ├── src/pages/           # One page per major feature
 │   └── e2e/                 # Playwright user-journey tests
-├── mobile/                  # React Native app (companion)
+├── mobile/                  # Experimental Expo sketch (unsupported)
 ├── infrastructure/          # Docker Compose, nginx, AWS notes
 ├── docs/                    # Architecture & design deep-dives
 ├── Makefile                 # Common dev commands
@@ -603,7 +604,7 @@ AlphaEdge supports three authentication modes:
 
 Cookie-based web sessions do not populate an in-memory JWT in the frontend; `/auth/me` and protected routes rely on cookies. Programmatic clients should use Bearer tokens or API keys.
 
-**Rate limiting:** Tier resolution uses Bearer or API key headers. Cookie-only browser sessions fall back to IP-based anonymous tier limits.
+**Rate limiting:** Tier resolution uses Bearer token, API key, or the HTTP-only access cookie (`alphaedge_access`). Unauthenticated requests use IP-based anonymous tier limits.
 
 ### Email / password
 Works out of the box. Passwords must meet strength requirements. In `development` mode, email is auto-verified on registration.
@@ -776,15 +777,16 @@ Copy `.env.example` to `.env` in the repo root. Key variables:
 | Optimization (grid, walk-forward, Bayesian) | Supported |
 | AI Insights (OpenAI) | Supported (`LLM_PROVIDER=mock` for offline) |
 | Marketplace (listings, clone) | Supported |
-| Organizations & Collaboration | Supported |
+| Organizations & Collaboration | Supported (org RBAC + WS co-edit; presence OT not claimed) |
 | Live Trading (manual) | Experimental — requires checklist + `LIVE_TRADING_ENABLED` |
 | Live Auto-Trading | Not Implemented — deployments require paper broker |
-| IBKR / Zerodha / Angel One / Upstox | Stub adapters only (not enabled) |
-| Crypto (Binance / Coinbase) | Not Implemented |
+| IBKR / Zerodha / Angel One / Upstox | Stub adapters only (API connection create rejected) |
+| Crypto (Binance / Coinbase) | Stub adapters only (API connection create rejected) |
 | Options | Not Implemented |
-| Indian Markets | Planned (mock data provider exists) |
-| Kill Switch | Not Implemented |
-| Multi-tenant Strategy Sandbox | Not Implemented |
+| Indian Markets | Partial (calendar/instruments/UI; live brokers stubbed) |
+| Kill Switch | Supported (Redis-backed; admin API + RiskGate stage 0) |
+| Multi-tenant Strategy Sandbox | Not Implemented — Python marketplace publish blocked |
+| Mobile app | Unsupported experimental sketch in `mobile/` |
 
 ---
 
@@ -802,7 +804,7 @@ AlphaEdge is a full research terminal, but not every architecture diagram featur
 | **Risk gate** | Pre-trade checks: cash/MIS margin, position size, portfolio exposure, daily loss | No real-time price feed — uses latest daily bar close as estimated fill price |
 | **Live trading** | Manual orders via Alpaca when enabled | No strategy-driven live execution; set `LIVE_TRADING_ENABLED=true` after completing `docs/PRODUCTION_CHECKLIST.md` |
 | **Market data** | Seed mock bars + optional Polygon/AV | Production-scale ingestion is bring-your-own keys |
-| **Domain events** | Celery tasks + direct calls | Full outbox/event-bus pattern not everywhere |
+| **Domain events** | Celery tasks + direct in-process calls | Transactional outbox removed (unused) |
 
 Phase 14 (v1.0.0) and Phase 15 polish (v1.1.0) complete. See [docs/ROADMAP.md](docs/ROADMAP.md), [RELEASE_NOTES.md](RELEASE_NOTES.md), and [docs/ENGINEERING_AUDIT_V1.md](docs/ENGINEERING_AUDIT_V1.md) for audit details and honest capability status.
 
@@ -874,8 +876,7 @@ Phase 14 (v1.0.0) and Phase 15 polish (v1.1.0) complete. See [docs/ROADMAP.md](d
 | Jobs | Celery |
 | Performance | C++17 + pybind11 (optional backtest engine) |
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS, TanStack Query |
-| Mobile | React Native (companion app in `/mobile`) |
-| Infra | Docker Compose, GitHub Actions, Nginx |
+| Infra | Docker Compose, GitHub Actions, Caddy |
 | Payments | Stripe (mock gateway for local dev) |
 | Brokers | Paper simulator, Alpaca (live when enabled); IBKR/Indian/crypto stubs not production-ready |
 

@@ -91,7 +91,7 @@ Command handlers mutate aggregates and emit events. Query handlers read from opt
 └──────────┘                         └──────────┘
 ```
 
-Events are persisted in an **outbox table** (transactional outbox pattern) and dispatched by Celery workers. This guarantees at-least-once delivery without dual-write problems.
+Events between modules are handled via **direct application calls** and **Celery tasks**. A transactional outbox was prototyped and removed — paper trading reliability uses the same DB transaction as order fills, with Redis pub/sub for WebSocket fan-out.
 
 ---
 
@@ -423,7 +423,7 @@ POST /strategies             POST /backtest-runs              POST /strategy-dep
 | HOLD signals | Ignored in backtests; logged in paper deployments |
 | C++ backtest | Crossover/crossunder DSL only; no shorts or advanced DSL |
 | Deployment shorts | Backtest supports `allow_short`; deployments map BUY/SELL to long-only paper orders |
-| Outbox / event bus | Dispatcher runs; `store_outbox_event` not called from business code yet |
+| Outbox / event bus | Removed — unused scaffolding deleted in favor of Celery + direct calls |
 | OpenTelemetry | Optional (`OTEL_ENABLED=false` default); console exporter only |
 | Kelly / volume slippage | Not implemented (architecture aspirational) |
 

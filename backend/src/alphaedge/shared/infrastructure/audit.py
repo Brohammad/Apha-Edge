@@ -8,7 +8,7 @@ from uuid import UUID
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from alphaedge.shared.infrastructure.outbox import AuditLogModel
+from alphaedge.shared.infrastructure.audit_models import AuditLogModel
 
 
 async def record_audit(

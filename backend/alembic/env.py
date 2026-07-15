@@ -38,10 +38,7 @@ from alphaedge.modules.risk.infrastructure.models import (  # noqa: F401
     RiskLimitModel,
     RiskSnapshotModel,
 )
-from alphaedge.shared.infrastructure.outbox import (  # noqa: F401
-    AuditLogModel,
-    OutboxEventModel,
-)
+from alphaedge.shared.infrastructure.audit_models import AuditLogModel  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
