@@ -67,6 +67,9 @@ lint-types:
 frontend-lint:
 	cd frontend && npm run lint
 
+frontend-e2e:
+	cd frontend && npm run test:e2e
+
 # Mirror what CI runs (requires Postgres + Redis running)
 ci-local: lint test-unit test-integration
 	@echo "✓ CI-local complete (lint + unit + integration)"

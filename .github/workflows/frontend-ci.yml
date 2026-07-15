@@ -5,18 +5,83 @@ on:
     branches: [main]
     paths:
       - "frontend/**"
+      - "backend/**"
       - ".github/workflows/frontend-ci.yml"
   pull_request:
     branches: [main]
     paths:
       - "frontend/**"
+      - "backend/**"
+      - ".github/workflows/frontend-ci.yml"
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+      - name: Security audit (npm)
+        working-directory: frontend
+        run: npm audit --audit-level=high
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+  playwright:
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: alphaedge
+          POSTGRES_PASSWORD: alphaedge
+          POSTGRES_DB: alphaedge
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+asyncpg://alphaedge:alphaedge@localhost:5432/alphaedge
+      REDIS_URL: redis://localhost:6379/0
+      CELERY_BROKER_URL: redis://localhost:6379/1
+      CELERY_RESULT_BACKEND: redis://localhost:6379/2
+      JWT_SECRET_KEY: test-secret-key-playwright
+      APP_SECRET_KEY: test-app-secret-playwright
+      APP_ENV: development
+      RATE_LIMIT_ENABLED: "false"
+      LLM_PROVIDER: mock
+      RESEARCH_PROVIDER: mock
+      CORS_ORIGINS: '["http://localhost:5173"]'
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
       - uses: actions/setup-node@v4
         with:
@@ -24,18 +89,43 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
-        working-directory: frontend
-        run: npm ci
+      - name: Install backend
+        run: pip install -e "./backend[dev]"
 
-      - name: Lint
-        working-directory: frontend
-        run: npm run lint
+      - name: Migrate database
+        working-directory: backend
+        run: alembic upgrade head
 
-      - name: Security audit (npm)
-        working-directory: frontend
-        run: npm audit --audit-level=high
+      - name: Seed roles
+        working-directory: backend
+        run: python -m scripts.seed_data
 
-      - name: Build
+      - name: Start API
+        working-directory: backend
+        run: |
+          nohup uvicorn alphaedge.main:app --host 127.0.0.1 --port 8000 > /tmp/api.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8000/api/v1/health/live && exit 0
+            sleep 1
+          done
+          echo "API failed to start"; cat /tmp/api.log; exit 1
+
+      - name: Install frontend + Playwright
         working-directory: frontend
-        run: npm run build
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run Playwright smoke
+        working-directory: frontend
+        run: npm run test:e2e
+        env:
+          CI: "true"
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7

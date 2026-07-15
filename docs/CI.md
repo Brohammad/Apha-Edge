@@ -22,16 +22,17 @@ Services started in CI: PostgreSQL 16, Redis 7.
 
 ### `frontend-ci.yml`
 
-Runs on changes to `frontend/**`.
+Runs on changes to `frontend/**` or `backend/**` (Playwright needs the API).
 
-| Step | Command |
-|------|---------|
-| Install | `npm ci` |
-| Lint | `npm run lint` (oxlint) |
-| Security audit | `npm audit --audit-level=high` |
-| Build | `npm run build` (tsc + vite) |
+| Job | Steps |
+|-----|-------|
+| `build` | `npm ci` → lint → `npm audit` → `npm run build` |
+| `playwright` | Postgres + Redis → migrate → start API → Chromium → `npm run test:e2e` |
 
-Playwright e2e tests are not run in CI (they require a running API). Run them locally with `make test-e2e` or `cd frontend && npx playwright test`.
+Browser smoke fails CI on regression. See [BROWSER_TESTING.md](BROWSER_TESTING.md).
+
+Local Playwright: `cd frontend && npm run test:e2e` (API must be on `:8000`).  
+`make test-e2e` is **backend** HTTP e2e, not Playwright.
 
 ## Running CI locally
 
