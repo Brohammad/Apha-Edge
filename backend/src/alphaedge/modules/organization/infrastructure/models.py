@@ -124,3 +124,53 @@ class SQLAlchemyOrganizationMemberRepository(OrganizationMemberRepository):
         )
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none() is not None
+
+    async def get_member(self, org_id: UUID, user_id: UUID) -> OrganizationMember | None:
+        stmt = select(OrganizationMemberModel).where(
+            OrganizationMemberModel.organization_id == org_id,
+            OrganizationMemberModel.user_id == user_id,
+        )
+        result = await self._session.execute(stmt)
+        model = result.scalar_one_or_none()
+        if model is None:
+            return None
+        return OrganizationMember(
+            organization_id=model.organization_id,
+            user_id=model.user_id,
+            role=OrgRole(model.role),
+            joined_at=model.joined_at,
+        )
+
+    async def update_role(
+        self, org_id: UUID, user_id: UUID, role: OrgRole
+    ) -> OrganizationMember:
+        stmt = select(OrganizationMemberModel).where(
+            OrganizationMemberModel.organization_id == org_id,
+            OrganizationMemberModel.user_id == user_id,
+        )
+        result = await self._session.execute(stmt)
+        model = result.scalar_one_or_none()
+        if model is None:
+            from alphaedge.shared.domain.exceptions import NotFoundError
+
+            raise NotFoundError("OrganizationMember", f"{org_id}:{user_id}")
+        model.role = role.value
+        await self._session.flush()
+        return OrganizationMember(
+            organization_id=model.organization_id,
+            user_id=model.user_id,
+            role=OrgRole(model.role),
+            joined_at=model.joined_at,
+        )
+
+    async def remove(self, org_id: UUID, user_id: UUID) -> None:
+        stmt = select(OrganizationMemberModel).where(
+            OrganizationMemberModel.organization_id == org_id,
+            OrganizationMemberModel.user_id == user_id,
+        )
+        result = await self._session.execute(stmt)
+        model = result.scalar_one_or_none()
+        if model is None:
+            return
+        await self._session.delete(model)
+        await self._session.flush()

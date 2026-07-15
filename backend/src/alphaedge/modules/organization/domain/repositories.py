@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from uuid import UUID
 
 from alphaedge.modules.organization.domain.entities import Organization, OrganizationMember
+from alphaedge.modules.organization.domain.enums import OrgRole
 
 
 class OrganizationRepository(ABC):
@@ -26,4 +27,12 @@ class OrganizationMemberRepository(ABC):
     async def list_members(self, org_id: UUID) -> list[OrganizationMember]: ...
 
     @abstractmethod
-    async def is_member(self, org_id: UUID, user_id: UUID) -> bool: ...
+    async def get_member(self, org_id: UUID, user_id: UUID) -> OrganizationMember | None: ...
+
+    @abstractmethod
+    async def update_role(
+        self, org_id: UUID, user_id: UUID, role: OrgRole
+    ) -> OrganizationMember: ...
+
+    @abstractmethod
+    async def remove(self, org_id: UUID, user_id: UUID) -> None: ...

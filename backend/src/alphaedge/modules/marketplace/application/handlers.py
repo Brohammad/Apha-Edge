@@ -73,8 +73,24 @@ class PublishListingHandler:
             raise NotFoundError("Strategy", str(command.strategy_id))
         if strategy.user_id != command.user_id:
             raise AuthorizationError("You do not own this strategy")
-        if not await self._member_repo.is_member(command.organization_id, command.user_id):
-            raise AuthorizationError("You are not a member of this organization")
+        from alphaedge.modules.organization.application.authz import require_org_role
+        from alphaedge.modules.organization.domain.enums import OrgRole
+        from alphaedge.modules.strategy.domain.enums import StrategyType
+
+        # Publishing runs strategy code for other tenants — only DSL until container isolation.
+        if strategy.strategy_type == StrategyType.PYTHON:
+            raise ValidationError(
+                "Python strategies cannot be published to the marketplace yet. "
+                "Use DSL strategies, or keep Python strategies private until "
+                "multi-tenant isolation is available (see docs/STRATEGY_SANDBOX.md)."
+            )
+
+        await require_org_role(
+            self._member_repo,
+            org_id=command.organization_id,
+            user_id=command.user_id,
+            min_role=OrgRole.ADMIN,
+        )
 
         listing = StrategyListing.create(
             strategy_id=command.strategy_id,
