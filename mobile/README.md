@@ -1,30 +1,8 @@
-# AlphaEdge Mobile
+# Experimental / unsupported
 
-React Native (Expo) companion app for portfolio overview and order monitoring on iOS and Android.
+This Expo app is a **sketch** (~400 LOC: login, portfolio list, orders list).
+It is **not** part of the AlphaEdge product surface and is not covered by CI.
 
-## Setup
+Use the web terminal (`frontend/`) for demos, interviews, and design-partner pilots.
 
-```bash
-cd mobile
-npm install
-npm start
-```
-
-Set the API URL in `app.json` → `extra.apiBaseUrl` (default `http://localhost:8000/api/v1`).
-
-For device testing, use your machine's LAN IP instead of `localhost`.
-
-## Screens
-
-- **Login** — JWT auth with secure token storage
-- **Overview** — portfolio list and cash balances
-- **Orders** — live order blotter
-
-## Production
-
-```bash
-npx expo prebuild
-eas build --platform all
-```
-
-See [Expo docs](https://docs.expo.dev/) for store submission.
+Kept in-tree only for optional personal experimentation.

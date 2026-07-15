@@ -2,9 +2,16 @@ import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { PageHeader, Skeleton } from './ui'
-import { DrawdownChart } from './institutionalCharts'
-import { EquitySparkline, type SeriesPoint } from './charts'
 import type { Portfolio } from '../lib/types'
+
+type MetricsResponse = {
+  factor_exposure: Record<string, string>
+  tracking_error: string
+  information_ratio: string
+  sharpe_ratio: string | null
+  available?: boolean
+  reason?: string
+}
 
 export default function PortfolioAnalyticsDashboard({ portfolioId: propId }: { portfolioId?: string }) {
   const { portfolioId: routeId } = useParams<{ portfolioId: string }>()
@@ -17,26 +24,20 @@ export default function PortfolioAnalyticsDashboard({ portfolioId: propId }: { p
   const { data: metrics, isLoading } = useQuery({
     queryKey: ['analytics-metrics', portfolioId],
     enabled: !!portfolioId,
-    queryFn: () =>
-      api<{
-        factor_exposure: Record<string, string>
-        tracking_error: string
-        information_ratio: string
-      }>(`/analytics/portfolios/${portfolioId}/metrics`),
+    queryFn: () => api<MetricsResponse>(`/analytics/portfolios/${portfolioId}/metrics`),
   })
   const { data: exposure } = useQuery({
     queryKey: ['analytics-exposure', portfolioId],
     enabled: !!portfolioId,
     queryFn: () =>
-      api<{ sector: Record<string, string>; country: Record<string, string> }>(
-        `/analytics/portfolios/${portfolioId}/exposure`,
-      ),
+      api<{
+        sector: Record<string, string>
+        country: Record<string, string>
+        note?: string
+      }>(`/analytics/portfolios/${portfolioId}/exposure`),
   })
 
-  const mockCurve: SeriesPoint[] = Array.from({ length: 30 }, (_, i) => ({
-    ts: new Date(Date.now() - (29 - i) * 86400000).toISOString(),
-    value: Number(portfolio?.initial_capital ?? 100000) * (1 + i * 0.002),
-  }))
+  const metricsAvailable = metrics?.available === true
 
   return (
     <div className="space-y-4">
@@ -47,11 +48,15 @@ export default function PortfolioAnalyticsDashboard({ portfolioId: propId }: { p
         <div className="grid gap-4 md:grid-cols-3">
           <div className="terminal-card p-4">
             <p className="text-xs text-ink-400">Tracking error</p>
-            <p className="font-mono text-xl text-volt-300">{metrics?.tracking_error ?? '—'}</p>
+            <p className="font-mono text-xl text-volt-300">
+              {metricsAvailable ? (metrics?.tracking_error ?? '—') : '—'}
+            </p>
           </div>
           <div className="terminal-card p-4">
             <p className="text-xs text-ink-400">Information ratio</p>
-            <p className="font-mono text-xl text-volt-300">{metrics?.information_ratio ?? '—'}</p>
+            <p className="font-mono text-xl text-volt-300">
+              {metricsAvailable ? (metrics?.information_ratio ?? '—') : '—'}
+            </p>
           </div>
           <div className="terminal-card p-4">
             <p className="text-xs text-ink-400">Sectors</p>
@@ -61,9 +66,12 @@ export default function PortfolioAnalyticsDashboard({ portfolioId: propId }: { p
           </div>
         </div>
       )}
-      <div className="terminal-card p-4">
-        <EquitySparkline data={mockCurve} />
-        <DrawdownChart data={mockCurve} />
+      <div className="terminal-card p-4 space-y-2">
+        <p className="text-sm text-ink-300">
+          {metrics?.reason ??
+            'Extended factor metrics require a historical return series. Holdings snapshots alone are not used to invent performance curves.'}
+        </p>
+        {exposure?.note ? <p className="text-xs text-ink-500">{exposure.note}</p> : null}
       </div>
     </div>
   )
