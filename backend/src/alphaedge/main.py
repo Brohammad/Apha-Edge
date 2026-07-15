@@ -232,6 +232,15 @@ def register_routes(app: FastAPI) -> None:
 
         checks["redis"] = "ok" if await check_redis_health() else "error"
 
+        if settings.require_celery_ready:
+            try:
+                from alphaedge.shared.infrastructure.celery_app import celery_app
+
+                ping = celery_app.control.inspect(timeout=1.0).ping()
+                checks["celery"] = "ok" if ping else "error"
+            except Exception:
+                checks["celery"] = "error"
+
         all_ok = all(v == "ok" for v in checks.values())
         return JSONResponse(
             status_code=200 if all_ok else 503,

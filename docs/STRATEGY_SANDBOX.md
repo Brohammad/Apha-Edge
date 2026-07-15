@@ -27,6 +27,17 @@ They are **not** safe to execute untrusted third-party code on a shared host.
 | `STRATEGY_LOAD_TIMEOUT_SECONDS` | `10` | Max seconds to compile/load strategy source |
 | `STRATEGY_EXEC_TIMEOUT_SECONDS` | `5` | Max seconds per `on_init` / `on_bar` call |
 | `STRATEGY_MEMORY_LIMIT_MB` | `512` | Soft address-space ceiling when OS supports it |
+| `STRATEGY_RUNNER_MODE` | `inprocess` | `inprocess` (default) or `subprocess` (child process isolation) |
+
+### Runner modes
+
+| Mode | Isolation | Use when |
+|------|-----------|----------|
+| `inprocess` | AST + timeouts + soft memory | Local research, trusted authors (default) |
+| `subprocess` | Same + hard process kill via join/terminate | Higher assurance on a single-tenant host |
+| container (future) | No network, cgroup, read-only FS | Multi-tenant / marketplace Python |
+
+Marketplace Python publish remains **blocked** until the container runner ships.
 
 ## Multi-tenant migration path (not implemented)
 

@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from alphaedge.modules.backtesting.domain.dsl_executor import DSLStrategyExecutor
-from alphaedge.modules.backtesting.domain.python_executor import PythonStrategyExecutor
+from alphaedge.modules.backtesting.domain.strategy_runner import (
+    StrategyRunner,
+    create_strategy_runner,
+)
 from alphaedge.modules.market_data.domain.entities import Bar
 from alphaedge.modules.strategy.domain.dsl import StrategyCompiler
 from alphaedge.modules.strategy.domain.enums import StrategyType
@@ -24,18 +27,17 @@ class StrategyRuntime:
             compiled, _ = StrategyCompiler.validate_and_compile(
                 StrategyType.DSL, source_code, strategy_name, parameters
             )
-            self._executor: DSLStrategyExecutor | PythonStrategyExecutor = DSLStrategyExecutor(
-                compiled
-            )
+            self._executor: DSLStrategyExecutor | StrategyRunner = DSLStrategyExecutor(compiled)
         else:
-            self._executor = PythonStrategyExecutor(source_code, parameters)
+            self._executor = create_strategy_runner(source_code, parameters)
 
     def on_bar(self, bar: Bar) -> Signal | None:
         return self._executor.on_bar(bar)
 
     def on_stop(self) -> None:
-        if isinstance(self._executor, PythonStrategyExecutor):
-            self._executor.on_stop()
+        stop = getattr(self._executor, "on_stop", None)
+        if callable(stop):
+            stop()
 
 
 _RUNTIME_CACHE: dict[str, StrategyRuntime] = {}

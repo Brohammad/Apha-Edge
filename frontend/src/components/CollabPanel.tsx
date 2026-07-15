@@ -20,9 +20,11 @@ export default function CollabPanel({
   const [session, setSession] = useState<CollabSessionInfo | null>(null)
   const [connected, setConnected] = useState(false)
   const [peerCount, setPeerCount] = useState(0)
+  const [cursors, setCursors] = useState<Record<string, { line: number; column: number }>>({})
   const wsRef = useRef<WebSocket | null>(null)
   const lastSentRef = useRef('')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const cursorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const startSession = async () => {
     const res = await api<CollabSessionInfo>('/collaboration/sessions', {
@@ -54,10 +56,31 @@ export default function CollabPanel({
         try {
           const msg = JSON.parse(ev.data as string) as {
             type: string
-            payload?: { source_code?: string }
+            user_id?: string
+            payload?: {
+              source_code?: string
+              peer_count?: number
+              line?: number
+              column?: number
+            }
           }
-          if (msg.type === 'join' || msg.type === 'leave') {
-            setPeerCount((c) => (msg.type === 'join' ? c + 1 : Math.max(0, c - 1)))
+          if (
+            (msg.type === 'join' || msg.type === 'leave') &&
+            typeof msg.payload?.peer_count === 'number'
+          ) {
+            setPeerCount(msg.payload.peer_count)
+          }
+          if (msg.type === 'cursor' && typeof msg.payload?.line === 'number') {
+            setCursors((prev) => {
+              const next = { ...prev }
+              if (msg.user_id) {
+                next[msg.user_id] = {
+                  line: msg.payload!.line!,
+                  column: msg.payload?.column ?? 0,
+                }
+              }
+              return next
+            })
           }
           if (msg.type === 'edit' && typeof msg.payload?.source_code === 'string') {
             onRemoteEdit(msg.payload.source_code)
@@ -102,9 +125,28 @@ export default function CollabPanel({
     }
   }, [code, connected])
 
+  useEffect(() => {
+    if (!connected || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+    if (cursorDebounceRef.current) clearTimeout(cursorDebounceRef.current)
+    cursorDebounceRef.current = setTimeout(() => {
+      const lines = code.split('\n')
+      wsRef.current?.send(
+        JSON.stringify({
+          type: 'cursor',
+          payload: { line: lines.length, column: (lines.at(-1) ?? '').length },
+        }),
+      )
+    }, 250)
+    return () => {
+      if (cursorDebounceRef.current) clearTimeout(cursorDebounceRef.current)
+    }
+  }, [code, connected])
+
   const shareUrl = session
     ? `${window.location.origin}${window.location.pathname}?collab=${session.session_id}`
     : ''
+
+  const cursorEntries = Object.entries(cursors)
 
   return (
     <div className="terminal-card p-4">
@@ -139,8 +181,17 @@ export default function CollabPanel({
             value={shareUrl}
             onFocus={(e) => e.target.select()}
           />
+          {cursorEntries.length > 0 ? (
+            <ul className="space-y-1 font-mono text-[10px] text-ink-400">
+              {cursorEntries.map(([uid, pos]) => (
+                <li key={uid}>
+                  peer {uid.slice(0, 8)}… @ L{pos.line}:C{pos.column}
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <p className="text-xs text-ink-500">
-            Share the URL — peers join with their own login and edits sync in real time.
+            Share the URL — peers join with their own login; edits and cursors sync in real time.
           </p>
         </div>
       )}

@@ -108,8 +108,10 @@ class ListPublicListingsHandler:
     def __init__(self, listing_repo: StrategyListingRepository) -> None:
         self._listing_repo = listing_repo
 
-    async def handle(self, *, limit: int = 50, offset: int = 0) -> list[ListingDTO]:
-        items = await self._listing_repo.list_public(limit=limit, offset=offset)
+    async def handle(
+        self, *, limit: int = 50, offset: int = 0, query: str | None = None
+    ) -> list[ListingDTO]:
+        items = await self._listing_repo.list_public(limit=limit, offset=offset, query=query)
         return [ListingDTO.from_entity(i) for i in items]
 
 

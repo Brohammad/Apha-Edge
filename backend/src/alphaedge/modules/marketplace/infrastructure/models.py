@@ -64,13 +64,18 @@ class SQLAlchemyStrategyListingRepository(StrategyListingRepository):
         model = await self._session.get(StrategyListingModel, listing_id)
         return _to_entity(model) if model else None
 
-    async def list_public(self, *, limit: int = 50, offset: int = 0) -> list[StrategyListing]:
+    async def list_public(
+        self, *, limit: int = 50, offset: int = 0, query: str | None = None
+    ) -> list[StrategyListing]:
+        stmt = select(StrategyListingModel).where(StrategyListingModel.is_public.is_(True))
+        if query and query.strip():
+            pattern = f"%{query.strip()}%"
+            stmt = stmt.where(
+                StrategyListingModel.title.ilike(pattern)
+                | StrategyListingModel.description.ilike(pattern)
+            )
         stmt = (
-            select(StrategyListingModel)
-            .where(StrategyListingModel.is_public.is_(True))
-            .order_by(StrategyListingModel.created_at.desc())
-            .limit(limit)
-            .offset(offset)
+            stmt.order_by(StrategyListingModel.created_at.desc()).limit(limit).offset(offset)
         )
         result = await self._session.execute(stmt)
         return [_to_entity(m) for m in result.scalars().all()]

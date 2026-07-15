@@ -776,8 +776,8 @@ Copy `.env.example` to `.env` in the repo root. Key variables:
 | Backtesting | Production Ready |
 | Optimization (grid, walk-forward, Bayesian) | Supported |
 | AI Insights (OpenAI) | Supported (`LLM_PROVIDER=mock` for offline) |
-| Marketplace (listings, clone) | Supported |
-| Organizations & Collaboration | Supported (org RBAC + WS co-edit; presence OT not claimed) |
+| Marketplace (listings, clone, search `?q=`) | Supported |
+| Organizations & Collaboration | Supported (org RBAC + WS co-edit + cursor presence) |
 | Live Trading (manual) | Experimental — requires checklist + `LIVE_TRADING_ENABLED` |
 | Live Auto-Trading | Not Implemented — deployments require paper broker |
 | IBKR / Zerodha / Angel One / Upstox | Stub adapters only (API connection create rejected) |
@@ -785,7 +785,7 @@ Copy `.env.example` to `.env` in the repo root. Key variables:
 | Options | Not Implemented |
 | Indian Markets | Partial (calendar/instruments/UI; live brokers stubbed) |
 | Kill Switch | Supported (Redis-backed; admin API + RiskGate stage 0) |
-| Multi-tenant Strategy Sandbox | Not Implemented — Python marketplace publish blocked |
+| Multi-tenant Strategy Sandbox | Not Implemented — use `STRATEGY_RUNNER_MODE=subprocess` for harder isolation; container runner future |
 | Mobile app | Unsupported experimental sketch in `mobile/` |
 
 ---

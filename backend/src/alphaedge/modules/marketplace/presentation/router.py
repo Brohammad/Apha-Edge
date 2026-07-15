@@ -39,12 +39,13 @@ async def list_listings(
     request: Request,
     limit: int = Query(default=50, le=200),
     offset: int = Query(default=0, ge=0),
+    q: str | None = Query(default=None, max_length=200),
     session: AsyncSession = Depends(get_db_session),
     _user_id: UUID = Depends(get_current_user_id),
 ):
     repo = SQLAlchemyStrategyListingRepository(session)
     handler = ListPublicListingsHandler(repo)
-    items = await handler.handle(limit=limit, offset=offset)
+    items = await handler.handle(limit=limit, offset=offset, query=q)
     return success_response(
         {
             "items": [

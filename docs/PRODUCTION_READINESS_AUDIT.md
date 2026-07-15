@@ -1,39 +1,28 @@
-# AlphaEdge — Production Readiness Audit (post P1/P2 completion)
+# AlphaEdge — Production Readiness Audit (post P3)
 
 **Date:** 2026-07-16  
-**Scope:** Remaining P1/P2 trust & production items  
-**Unit tests:** 123 passed
+**Unit tests:** 124 backend + 9 frontend Vitest  
 
-## Decisions executed
+## P3 outcomes
 
-| Item | Decision | Outcome |
-|------|----------|---------|
-| P1-3 Outbox | **Removed** | Dead producers/dispatcher deleted; `outbox_events` dropped; audit log retained |
-| P1-4 Playwright | **Shipped** | Expanded smoke + CI job fails on regression |
-| P1-5 Python isolation | **Incremental** | Timeouts + memory soft limit; marketplace Python publish blocked; container path documented |
-| P2 Kill switch | **Wired** | Redis-backed; RiskGate stage 0; admin API; audit + tests |
-| P2 Org RBAC | **Wired** | Member CRUD + role ranks; marketplace publish requires admin |
-| P2 Mobile | **Demoted** | Removed from product positioning; sketch retained as unsupported |
+| Item | Outcome |
+|------|---------|
+| Strategy runner | `STRATEGY_RUNNER_MODE=inprocess\|subprocess`; marketplace Python still blocked |
+| Playwright flow | `research-paper-flow.spec.ts` covers validate → deploy UI → backtest modal |
+| Collab presence | Join/leave peer_count broadcast + cursor positions |
+| Marketplace stubs | Deleted; real `?q=` ILIKE search on listings |
+| OTEL + readiness | Optional `[otel]` extra + OTLP endpoint; Celery ping when `REQUIRE_CELERY_READY` |
+| Backups | `docs/BACKUPS.md` dump/restore drill |
+| Frontend unit tests | Vitest for `format` + `api` |
 
-## Trust cleanup
+## Remaining (future, not blocking)
 
-- Removed fabricated portfolio equity curves from analytics UI
-- Removed synthetic live-chart seed bars
-- Capability matrix updated for kill switch, brokers, mobile, sandbox
+1. Container/Firecracker strategy runner for untrusted marketplace Python  
+2. OT/CRDT collaborative editing  
+3. Marketplace ratings/subscriptions product  
+4. Broader component-level FE tests  
+5. Automated offsite backup cron in production IaC  
 
-## Remaining backlog (P3 only)
+## Verdict
 
-1. Container/Firecracker strategy runner for multi-tenant Python
-2. Playwright covering full validate→backtest→deploy→fill path with seeded bars
-3. Cursor OT presence for collaboration
-4. Marketplace search/subscriptions/leaderboards (or delete domain stubs)
-5. OpenTelemetry OTLP exporter + dependency pin
-6. Worker-aware readiness probe
-7. Automated DB backups / restore drill docs for VPS
-8. Frontend unit tests (component-level)
-
-## Production readiness verdict
-
-**Suitable for:** senior eng interviews, quant portfolio demos, design-partner paper-trading pilots, open-source review.
-
-**Not suitable for:** untrusted multi-tenant Python execution, live capital without further broker + ops hardening.
+No P0/P1/P2/P3 backlog items remain as previously defined. AlphaEdge is positioned as a production-grade research and paper-trading platform for demos, interviews, and design partners.

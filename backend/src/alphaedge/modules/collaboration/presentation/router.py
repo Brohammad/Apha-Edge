@@ -93,6 +93,17 @@ async def collab_websocket(
     subprotocol = websocket.headers.get("sec-websocket-protocol")
     await websocket.accept(subprotocol=subprotocol)
     await collab_rooms.join(session_id, websocket)
+    peer_count = await collab_rooms.peer_count(session_id)
+    await collab_rooms.broadcast(
+        session_id,
+        json.dumps(
+            {
+                "type": "join",
+                "user_id": str(user_id),
+                "payload": {"user_id": str(user_id), "peer_count": peer_count},
+            }
+        ),
+    )
 
     try:
         while True:
@@ -117,6 +128,12 @@ async def collab_websocket(
                 await repo.save_event(CollabEvent.create(session_id, user_id, event_type, payload))
                 await session.commit()
 
+            if event_type == "cursor":
+                payload = {
+                    **payload,
+                    "peer_count": await collab_rooms.peer_count(session_id),
+                }
+
             broadcast = json.dumps(
                 {"type": event_type, "user_id": str(user_id), "payload": payload}
             )
@@ -130,3 +147,14 @@ async def collab_websocket(
             await session.commit()
     finally:
         await collab_rooms.leave(session_id, websocket)
+        peer_count = await collab_rooms.peer_count(session_id)
+        await collab_rooms.broadcast(
+            session_id,
+            json.dumps(
+                {
+                    "type": "leave",
+                    "user_id": str(user_id),
+                    "payload": {"user_id": str(user_id), "peer_count": peer_count},
+                }
+            ),
+        )

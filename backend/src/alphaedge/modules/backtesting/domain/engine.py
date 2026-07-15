@@ -10,7 +10,10 @@ from alphaedge.modules.backtesting.domain.enums import TradeSide
 from alphaedge.modules.backtesting.domain.fill_simulator import FillSimulator
 from alphaedge.modules.backtesting.domain.metrics import EquityPoint, MetricsCalculator
 from alphaedge.modules.backtesting.domain.position_sizer import PositionSizer
-from alphaedge.modules.backtesting.domain.python_executor import PythonStrategyExecutor
+from alphaedge.modules.backtesting.domain.strategy_runner import (
+    StrategyRunner,
+    create_strategy_runner,
+)
 from alphaedge.modules.market_data.domain.entities import Bar
 from alphaedge.modules.strategy.domain.dsl import StrategyCompiler
 from alphaedge.modules.strategy.domain.enums import SignalAction, StrategyType
@@ -63,7 +66,7 @@ class DSLExecutorAdapter(StrategyExecutor):
 
 
 class PythonExecutorAdapter(StrategyExecutor):
-    def __init__(self, executor: PythonStrategyExecutor) -> None:
+    def __init__(self, executor: StrategyRunner) -> None:
         self._executor = executor
 
     def on_bar(self, bar: Bar) -> Signal | None:
@@ -177,7 +180,7 @@ class BacktestEngine:
                 StrategyType.DSL, source_code, strategy_name, parameters
             )
             return DSLExecutorAdapter(DSLStrategyExecutor(compiled))
-        return PythonExecutorAdapter(PythonStrategyExecutor(source_code, parameters))
+        return PythonExecutorAdapter(create_strategy_runner(source_code, parameters))
 
     @staticmethod
     def _merge_events(bars_by_instrument: dict[UUID, list[Bar]]) -> list[Bar]:

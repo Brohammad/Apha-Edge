@@ -64,9 +64,6 @@ class Settings(BaseSettings):
     # SEC EDGAR
     sec_user_agent: str = "AlphaEdge research@example.com"
 
-    # OpenTelemetry
-    otel_enabled: bool = False
-
     # Crypto brokers
     binance_api_key: str = ""
     binance_api_secret: str = ""
@@ -107,6 +104,15 @@ class Settings(BaseSettings):
     strategy_exec_timeout_seconds: float = 5.0
     strategy_load_timeout_seconds: float = 10.0
     strategy_memory_limit_mb: int = 512
+    strategy_runner_mode: Literal["inprocess", "subprocess"] = "inprocess"
+
+    # OpenTelemetry
+    otel_enabled: bool = False
+    otel_service_name: str = "alphaedge-api"
+    otel_exporter_otlp_endpoint: str = ""
+
+    # Readiness: require at least one Celery worker (disable in unit tests)
+    require_celery_ready: bool = False
 
     # Risk snapshot Redis cache TTL (seconds)
     risk_snapshot_cache_ttl_seconds: int = 60
