@@ -23,6 +23,11 @@ from alphaedge.modules.strategy.domain.indicators import (
 from alphaedge.modules.strategy.domain.value_objects import Signal, StrategyContext
 from alphaedge.shared.domain.exceptions import ValidationError
 
+from alphaedge.modules.backtesting.domain.sandbox import (
+    apply_memory_limit_mb,
+    run_with_timeout,
+)
+
 _ALLOWED_IMPORT_PREFIXES = ("alphaedge.modules.strategy.domain",)
 
 
@@ -104,32 +109,42 @@ def _strategy_namespace() -> dict[str, object]:
 
 def load_python_strategy(source_code: str) -> type[StrategyBase]:
     """Load a user-defined StrategyBase subclass from source in a restricted namespace."""
+    from alphaedge.config import settings
     from alphaedge.modules.strategy.domain.dsl import StrategyCompiler
 
     StrategyCompiler.validate_python(source_code)
     if "StrategyBase" not in source_code:
         raise ValidationError("Python strategy must subclass StrategyBase")
 
-    namespace: dict[str, object] = _strategy_namespace()
-    namespace["__builtins__"] = _safe_builtins()
-    exec(compile(source_code, "<strategy>", "exec"), namespace)
+    apply_memory_limit_mb()
 
-    candidates: list[type[StrategyBase]] = []
-    for obj in namespace.values():
-        if isinstance(obj, type) and issubclass(obj, StrategyBase) and obj is not StrategyBase:
-            candidates.append(obj)
+    def _load() -> type[StrategyBase]:
+        namespace: dict[str, object] = _strategy_namespace()
+        namespace["__builtins__"] = _safe_builtins()
+        exec(compile(source_code, "<strategy>", "exec"), namespace)
 
-    if not candidates:
-        tree = ast.parse(source_code)
-        for node in tree.body:
-            if isinstance(node, ast.ClassDef):
-                raise ValidationError(f"Class '{node.name}' must subclass StrategyBase")
-        raise ValidationError("No StrategyBase subclass found in Python strategy")
+        candidates: list[type[StrategyBase]] = []
+        for obj in namespace.values():
+            if isinstance(obj, type) and issubclass(obj, StrategyBase) and obj is not StrategyBase:
+                candidates.append(obj)
 
-    if len(candidates) > 1:
-        raise ValidationError("Python strategy must define exactly one StrategyBase subclass")
+        if not candidates:
+            tree = ast.parse(source_code)
+            for node in tree.body:
+                if isinstance(node, ast.ClassDef):
+                    raise ValidationError(f"Class '{node.name}' must subclass StrategyBase")
+            raise ValidationError("No StrategyBase subclass found in Python strategy")
 
-    return candidates[0]
+        if len(candidates) > 1:
+            raise ValidationError("Python strategy must define exactly one StrategyBase subclass")
+
+        return candidates[0]
+
+    return run_with_timeout(
+        _load,
+        seconds=settings.strategy_load_timeout_seconds,
+        label="load",
+    )
 
 
 class PythonStrategyExecutor:
@@ -151,14 +166,28 @@ class PythonStrategyExecutor:
     def on_init(self) -> None:
         if self._initialized:
             return
+        from alphaedge.config import settings
+
         ctx = StrategyContext(parameters=self._parameters)
-        self._strategy.on_init(ctx)
+
+        def _init() -> None:
+            self._strategy.on_init(ctx)
+
+        run_with_timeout(_init, seconds=settings.strategy_exec_timeout_seconds, label="on_init")
         self._initialized = True
 
     def on_bar(self, bar: Bar) -> Signal | None:
+        from alphaedge.config import settings
+
         self.on_init()
         ctx = self._context_for(bar.instrument_id)
-        signal = self._strategy.on_bar(bar, ctx)
+
+        def _eval() -> Signal | None:
+            return self._strategy.on_bar(bar, ctx)
+
+        signal = run_with_timeout(
+            _eval, seconds=settings.strategy_exec_timeout_seconds, label="on_bar"
+        )
         if signal is None:
             return None
         if signal.action == SignalAction.HOLD:

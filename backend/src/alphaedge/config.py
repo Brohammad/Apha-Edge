@@ -103,6 +103,11 @@ class Settings(BaseSettings):
     # Live trading (disabled by default — must be explicitly enabled in production)
     live_trading_enabled: bool = False
 
+    # Python strategy sandbox (trusted single-tenant; see docs/STRATEGY_SANDBOX.md)
+    strategy_exec_timeout_seconds: float = 5.0
+    strategy_load_timeout_seconds: float = 10.0
+    strategy_memory_limit_mb: int = 512
+
     # Risk snapshot Redis cache TTL (seconds)
     risk_snapshot_cache_ttl_seconds: int = 60
 

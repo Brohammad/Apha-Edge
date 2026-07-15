@@ -142,15 +142,20 @@ class MyStrategy(StrategyBase):
 
 ### 4.2 Sandbox rules (trusted environments only)
 
-Python strategies are **not** run in an OS-level sandbox. They execute in the same process as the API/worker via `exec()` with:
+See **[STRATEGY_SANDBOX.md](STRATEGY_SANDBOX.md)** for the full trust model and multi-tenant migration path.
+
+Python strategies execute in the worker/API process via `exec()` with:
 
 - **Static AST validation** — blocks dangerous imports (`os`, `sys`, `subprocess`, …) and calls (`eval`, `exec`, `open`, `__import__`, …)
 - **Restricted `__import__`** — only `alphaedge.modules.strategy.domain` (and submodules) may be imported at runtime
 - **Injected API** — `StrategyBase`, indicators, `Signal`, `Decimal` only
+- **Wall-clock timeouts** — `STRATEGY_LOAD_TIMEOUT_SECONDS`, `STRATEGY_EXEC_TIMEOUT_SECONDS`
+- **Memory soft limit** — best-effort via `STRATEGY_MEMORY_LIMIT_MB` / `RLIMIT_AS`
 
 **Suitable for:** single-user research, trusted code authors, private deployments.
 
-**Not suitable for:** multi-tenant SaaS, marketplace strategies from untrusted authors, or production live trading without additional isolation (containers, separate worker pools, etc.).
+**Not suitable for:** multi-tenant SaaS or marketplace strategies from untrusted authors.
+Marketplace publish of Python strategies is **blocked** until container isolation ships.
 
 - Must define **exactly one** `StrategyBase` subclass.
 - `on_tick` is optional; backtests and deployments are bar-driven today.
