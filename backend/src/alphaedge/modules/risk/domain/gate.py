@@ -11,6 +11,7 @@ from alphaedge.modules.execution.domain.enums import ProductType
 from alphaedge.modules.portfolio.domain.entities import Holding, Portfolio
 from alphaedge.modules.portfolio.domain.enums import RiskLimitType
 from alphaedge.modules.risk.domain.entities import RiskLimit, RiskSnapshot
+from alphaedge.modules.risk.domain.kill_switch import get_kill_switch
 from alphaedge.modules.risk.domain.mis_margin import estimate_required_margin
 from alphaedge.shared.domain.value_objects import Side
 
@@ -43,7 +44,7 @@ class RiskGate:
     """Validate an order before it is persisted or sent to a broker.
 
     Pipeline:
-      order → position sizing → max position exposure → portfolio exposure →
+      kill switch → position sizing → max position → portfolio exposure →
       cash availability → configured risk limits → daily loss limit
     """
 
@@ -60,6 +61,11 @@ class RiskGate:
         limits: list[RiskLimit],
         latest_snapshot: RiskSnapshot | None = None,
     ) -> RiskGateResult:
+        kill = get_kill_switch()
+        if kill.enabled:
+            reason = kill.reason or "Platform kill switch is active"
+            return RiskGateResult.reject("kill_switch", reason)
+
         if proposed.quantity <= 0:
             return RiskGateResult.reject("position_sizing", "Order quantity must be positive")
         if proposed.estimated_price <= 0:

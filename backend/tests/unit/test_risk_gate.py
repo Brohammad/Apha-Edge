@@ -3,11 +3,22 @@
 from decimal import Decimal
 from uuid import uuid4
 
+import pytest
+
 from alphaedge.modules.portfolio.domain.entities import Holding, Portfolio
 from alphaedge.modules.portfolio.domain.enums import RiskLimitType
 from alphaedge.modules.risk.domain.entities import RiskLimit
 from alphaedge.modules.risk.domain.gate import ProposedOrder, RiskGate
+from alphaedge.modules.risk.domain.kill_switch import KillSwitchState
 from alphaedge.shared.domain.value_objects import Side
+
+
+@pytest.fixture(autouse=True)
+def _kill_switch_off(monkeypatch):
+    monkeypatch.setattr(
+        "alphaedge.modules.risk.domain.gate.get_kill_switch",
+        lambda: KillSwitchState(),
+    )
 
 
 def _portfolio(cash: Decimal = Decimal("100000")) -> Portfolio:
@@ -237,3 +248,29 @@ class TestRiskGateHappyPath:
         )
         assert not result.allowed
         assert result.stage == "position_sizing"
+
+
+class TestKillSwitchGate:
+    def test_rejects_when_kill_switch_active(self, monkeypatch):
+        from alphaedge.modules.risk.domain.kill_switch import KillSwitchState
+
+        monkeypatch.setattr(
+            "alphaedge.modules.risk.domain.gate.get_kill_switch",
+            lambda: KillSwitchState(enabled=True, reason="ops halt"),
+        )
+        portfolio = _portfolio(cash=Decimal("10000"))
+        proposed = ProposedOrder(
+            instrument_id=uuid4(),
+            side=Side.BUY,
+            quantity=Decimal("1"),
+            estimated_price=Decimal("100"),
+        )
+        result = RiskGate.evaluate(
+            portfolio=portfolio,
+            holdings=[],
+            proposed=proposed,
+            limits=[],
+        )
+        assert not result.allowed
+        assert result.stage == "kill_switch"
+        assert "ops halt" in (result.reason or "")

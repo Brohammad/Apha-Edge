@@ -35,6 +35,7 @@ from alphaedge.modules.organization.presentation.router import organizations_rou
 from alphaedge.modules.payments.presentation.router import payments_router
 from alphaedge.modules.portfolio.presentation.router import portfolios_router
 from alphaedge.modules.risk.presentation.router import risk_router
+from alphaedge.modules.risk.presentation.kill_switch_router import kill_switch_router
 from alphaedge.modules.strategy.presentation.deployments_router import deployments_router
 from alphaedge.modules.strategy.presentation.router import (
     indicators_router,
@@ -212,6 +213,7 @@ def register_routes(app: FastAPI) -> None:
     api_v1.include_router(insights_router)
     api_v1.include_router(portfolios_router)
     api_v1.include_router(risk_router)
+    api_v1.include_router(kill_switch_router)
     api_v1.include_router(ws_router)
 
     @api_v1.get("/health/live", tags=["Health"])
