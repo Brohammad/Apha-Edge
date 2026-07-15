@@ -31,7 +31,11 @@ from alphaedge.modules.execution.domain.repositories import (
     OrderRepository,
 )
 from alphaedge.modules.execution.domain.services import record_event
-from alphaedge.modules.execution.infrastructure.registry import get_broker
+from alphaedge.modules.execution.infrastructure.registry import (
+    get_broker,
+    is_broker_implemented,
+    list_implemented_brokers,
+)
 from alphaedge.modules.market_data.domain.enums import Timeframe
 from alphaedge.modules.market_data.domain.repositories import BarRepository, InstrumentRepository
 from alphaedge.modules.portfolio.domain.repositories import HoldingRepository, PortfolioRepository
@@ -59,6 +63,12 @@ class CreateBrokerConnectionHandler:
             broker_name = BrokerName(command.broker_name)
         except ValueError as exc:
             raise ValidationError(f"Invalid broker name: {command.broker_name}") from exc
+        if not is_broker_implemented(broker_name):
+            supported = ", ".join(list_implemented_brokers())
+            raise ValidationError(
+                f"Broker '{broker_name.value}' is not available yet "
+                f"(stub only). Supported brokers: {supported}."
+            )
         connection = BrokerConnection.create(
             user_id=command.user_id,
             broker_name=broker_name,

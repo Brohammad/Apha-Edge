@@ -19,6 +19,11 @@ async def auth_context_middleware(request: Request, call_next):
 
     api_key = request.headers.get("X-API-Key")
     auth_header = request.headers.get("Authorization", "")
+    bearer_token = auth_header[7:] if auth_header.startswith("Bearer ") else None
+    if not bearer_token:
+        from alphaedge.shared.presentation.cookies import read_access_token
+
+        bearer_token = read_access_token(request)
 
     async with async_session_factory() as session:
         if api_key:
@@ -39,10 +44,9 @@ async def auth_context_middleware(request: Request, call_next):
                 await session.commit()
             except AuthenticationError:
                 await session.rollback()
-        elif auth_header.startswith("Bearer "):
-            token = auth_header[7:]
+        elif bearer_token:
             try:
-                payload = TokenService.decode_access_token(token)
+                payload = TokenService.decode_access_token(bearer_token)
                 sub = payload.get("sub")
                 if sub and isinstance(sub, str):
                     user_id = UUID(sub)

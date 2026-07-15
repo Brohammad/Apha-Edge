@@ -1,6 +1,9 @@
 # Production deploy — HTTPS via Caddy at alphaedge.brohammad.tech
 # Requires: DNS A record → this server's public IP, ports 80/443 open.
 # Usage: make prod  (see docs/DEPLOY_HOSTINGER.md)
+#
+# Secrets come from ../.env.prod (APP_ENV=production, strong POSTGRES_PASSWORD).
+# Default alphaedge:alphaedge credentials will refuse to start.
 
 services:
   postgres:
@@ -8,7 +11,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: alphaedge
-      POSTGRES_PASSWORD: alphaedge
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.prod}
       POSTGRES_DB: alphaedge
     volumes:
       - prod_postgres_data:/var/lib/postgresql/data
@@ -36,7 +39,7 @@ services:
       - ../.env.prod
     environment:
       PYTHONPATH: /app/src
-      DATABASE_URL: postgresql+asyncpg://alphaedge:alphaedge@postgres:5432/alphaedge
+      DATABASE_URL: postgresql+asyncpg://alphaedge:${POSTGRES_PASSWORD}@postgres:5432/alphaedge
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
@@ -46,8 +49,6 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ../backend/src:/app/src
-      - ../backend/scripts:/app/scripts
       - ../docker/entrypoint-demo-api.sh:/app/entrypoint-demo-api.sh:ro
     entrypoint: ["/bin/sh", "/app/entrypoint-demo-api.sh"]
 
@@ -60,7 +61,7 @@ services:
       - ../.env.prod
     environment:
       PYTHONPATH: /app/src
-      DATABASE_URL: postgresql+asyncpg://alphaedge:alphaedge@postgres:5432/alphaedge
+      DATABASE_URL: postgresql+asyncpg://alphaedge:${POSTGRES_PASSWORD}@postgres:5432/alphaedge
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
@@ -69,9 +70,27 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ../backend/src:/app/src
     command: celery -A alphaedge.shared.infrastructure.celery_app worker --loglevel=info
+
+  beat:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.worker
+    restart: unless-stopped
+    env_file:
+      - ../.env.prod
+    environment:
+      PYTHONPATH: /app/src
+      DATABASE_URL: postgresql+asyncpg://alphaedge:${POSTGRES_PASSWORD}@postgres:5432/alphaedge
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A alphaedge.shared.infrastructure.celery_app beat --loglevel=info
 
   gateway:
     build:

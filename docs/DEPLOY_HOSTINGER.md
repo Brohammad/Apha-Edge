@@ -78,9 +78,11 @@ Generate secrets:
 ```bash
 python3 -c "import secrets; print('APP_SECRET_KEY=' + secrets.token_hex(32))"
 python3 -c "import secrets; print('JWT_SECRET_KEY=' + secrets.token_hex(32))"
+python3 -c "import secrets; print('POSTGRES_PASSWORD=' + secrets.token_urlsafe(24))"
 ```
 
-Paste into `.env.prod`, save.
+Paste into `.env.prod`. Set the same password in both `POSTGRES_PASSWORD` and `DATABASE_URL`.  
+`APP_ENV=production` is required — the API refuses to start with default DB credentials.
 
 Start production stack:
 

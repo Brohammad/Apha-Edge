@@ -8,7 +8,6 @@ backend/.venv/
 backend/.pytest_cache/
 backend/.mypy_cache/
 backend/.ruff_cache/
-.env
 *.egg
 
 # Node
@@ -45,6 +44,9 @@ backend/cpp/*.egg-info/
 *.o
 
 # Secrets
+.env
 .env.local
 .env.production
+.env.demo
+.env.prod
 credentials.json

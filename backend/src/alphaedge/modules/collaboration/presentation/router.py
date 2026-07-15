@@ -12,6 +12,7 @@ from alphaedge.modules.collaboration.domain.entities import (
     CollabSessionStatus,
 )
 from alphaedge.modules.collaboration.infrastructure.models import SQLAlchemyCollabRepository
+from alphaedge.modules.collaboration.infrastructure.rooms import collab_rooms
 from alphaedge.modules.strategy.infrastructure.models import SQLAlchemyStrategyRepository
 from alphaedge.shared.domain.exceptions import AuthorizationError, NotFoundError
 from alphaedge.shared.infrastructure.database import async_session_factory
@@ -91,7 +92,7 @@ async def collab_websocket(
 
     subprotocol = websocket.headers.get("sec-websocket-protocol")
     await websocket.accept(subprotocol=subprotocol)
-    peers: set[WebSocket] = {websocket}
+    await collab_rooms.join(session_id, websocket)
 
     try:
         while True:
@@ -119,11 +120,7 @@ async def collab_websocket(
             broadcast = json.dumps(
                 {"type": event_type, "user_id": str(user_id), "payload": payload}
             )
-            for peer in list(peers):
-                try:
-                    await peer.send_text(broadcast)
-                except Exception:
-                    peers.discard(peer)
+            await collab_rooms.broadcast(session_id, broadcast)
     except WebSocketDisconnect:
         async with async_session_factory() as session:
             repo = SQLAlchemyCollabRepository(session)
@@ -131,3 +128,5 @@ async def collab_websocket(
                 CollabEvent.create(session_id, user_id, "leave", {"user_id": str(user_id)})
             )
             await session.commit()
+    finally:
+        await collab_rooms.leave(session_id, websocket)
